@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session</title>
+<style>
+:root{--bg:#190e1d;--panel:#26162b;--ink:#f1e7ec;--mute:#a995b0;--hot:#ff3d81;--warm:#ffb347;--line:#3b2744}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;min-height:100vh}
+h1,h2,button,label,select,.sm{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:28px;margin:8px 0 2px}
+.sub{color:var(--mute);margin:0 0 20px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 14px}
+h2{font-size:15px;margin:0 0 12px;color:var(--warm);font-weight:600}
+.dialwrap{display:flex;flex-direction:column;align-items:center}
+#dial{width:260px;height:260px;touch-action:none;cursor:pointer}
+#dialval{font:600 44px system-ui;fill:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center}
+.chip,.opt{background:#1d1122;border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:7px 14px;font-size:14px;cursor:pointer}
+.chip.on,.opt.on{background:var(--hot);border-color:var(--hot);color:#fff}
+.grid{display:flex;flex-wrap:wrap;gap:8px}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+.row label{min-width:120px;color:var(--mute);font-size:14px}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--hot)}
+select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px}
+.big{width:100%;background:var(--hot);color:#fff;border:0;border-radius:12px;padding:16px;font-size:18px;font-weight:600;cursor:pointer}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:14px}
+#run{display:none;position:fixed;inset:0;background:var(--bg);z-index:5;flex-direction:column}
+#stage{flex:1;position:relative;background:#0d0710;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
+#stage img,#stage video{max-width:100%;max-height:100%;object-fit:contain}
+#empty{color:var(--mute);font:14px system-ui;text-align:center;padding:20px}
+#cap{position:absolute;left:0;right:0;bottom:0;padding:26px 18px 16px;background:linear-gradient(transparent,rgba(13,7,16,.92) 60%);text-align:center}
+#txt{font-size:clamp(20px,4.6vw,32px);line-height:1.3;margin:0}
+#next{font:14px system-ui;color:var(--mute);min-height:20px}
+#bpm{font:14px system-ui;color:var(--warm);margin-top:6px;min-height:20px}
+#bar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;justify-content:center}
+#heat{flex:1;min-width:160px;height:10px;background:#1d1122;border-radius:6px;overflow:hidden}
+#heatf{height:100%;width:0;background:linear-gradient(90deg,var(--warm),var(--hot));transition:width 2s linear}
+#beat{width:16px;height:16px;border-radius:50%;background:var(--hot);opacity:.25}
+#beat.p{opacity:1;transform:scale(1.35)}
+#beat{transition:all .08s}
+#panic{position:fixed;inset:0;background:#fff;z-index:9;display:none;color:#222;font:18px system-ui;padding:40px}
+.hide{display:none!important}
+.note{font:13px system-ui;color:var(--mute);margin:8px 0 0}
+</style></head><body>
+<main id="setup">
+<h1>Session</h1>
+<p class="sub">Pick a length, a style, and how hard you want it. The end stays hidden.</p>
+
+<section><h2>Length (the real end moves with the level)</h2>
+<div class="dialwrap">
+<svg id="dial" viewBox="0 0 260 260"><circle cx="130" cy="130" r="104" fill="none" stroke="#3b2744" stroke-width="18"/>
+<path id="arc" fill="none" stroke="#ff3d81" stroke-width="18" stroke-linecap="round"/>
+<circle id="knob" r="14" fill="#ffb347"/>
+<text id="dialval" x="130" y="136" text-anchor="middle">30</text>
+<text x="130" y="164" text-anchor="middle" fill="#a995b0" font-family="system-ui" font-size="14" id="dialsub">minutes</text></svg>
+<div class="chips" id="presets"></div></div></section>
+
+<section><h2>Style</h2><div class="grid" id="styles"></div>
+<p class="note">Tap more than one to mix them. Nothing selected = mixed.</p></section>
+
+<section><h2>Level</h2>
+<div class="row"><label>Intensity</label><input type="range" id="level" min="1" max="5" value="3"><span id="lvlname" class="sm"></span></div>
+<p class="note">Low: mostly permission to finish near the end. High: more edging, longer holds, and a real chance you get ruined, denied, or extended.</p></section>
+
+<section><h2>Tasks allowed</h2><div class="grid" id="tasks"></div></section>
+
+<section><h2>Sound</h2>
+<div class="row"><label>Metronome</label><button class="chip on" id="metro">On</button></div>
+<div class="row"><label>Voice reads orders</label><button class="chip" id="voice">Off</button></div>
+<div class="row"><label>Voice</label><select id="voicesel"></select></div>
+<div class="row"><label>Voice volume</label><input type="range" id="vvol" min="0.1" max="1" step="0.1" value="1"></div></section>
+
+<section><h2>Control</h2>
+<div class="row"><label>Change speed myself</label><button class="chip" id="speedctl">Off</button></div>
+<div class="row"><label>Show what's next</label><button class="chip on" id="shownext">On</button></div>
+<p class="note">When speed control is allowed, Faster and Slower buttons appear during the session and change every pace by 10% a tap.</p></section>
+<section><h2>Pictures and videos</h2>
+<div class="row"><input type="file" id="files" accept="image/*,video/*" multiple></div>
+<div class="row"><label>Shuffle every</label><input type="range" id="shuf" min="3" max="30" value="8"><span id="shufv" class="sm">8s</span></div>
+<div class="row"><label>Video sound</label><button class="chip" id="vsound">Muted</button></div>
+<p class="note" id="count">No media yet. Files stay on your device.</p></section>
+
+<button class="big" id="start">Start</button>
+</main>
+
+<div id="run">
+<div id="stage"><div id="empty">No media loaded</div>
+<div id="cap"><p id="txt"></p><div id="bpm"></div><div id="next"></div></div></div>
+<div id="bar"><div id="beat"></div><div id="heat"><div id="heatf"></div></div>
+<button class="ghost hide" id="slower">Slower</button><button class="ghost hide" id="faster">Faster</button>
+<button class="ghost" id="edge">I'm at the edge</button>
+<button class="ghost" id="pause">Pause</button>
+<button class="ghost" id="fs">Fullscreen</button>
+<button class="ghost" id="hidebtn">Hide</button>
+<button class="ghost" id="stop">End</button></div></div>
+<div id="panic">Notes<br><br>Tap anywhere to come back.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const R=(a,b)=>a+Math.random()*(b-a), RI=(a,b)=>Math.floor(R(a,b+1)), PICK=a=>a[Math.floor(Math.random()*a.length)];
+
+/* ---------- Setup UI ---------- */
+let minutes=30;
+const MINS=[5,10,15,25,30,45,60,90,120,150,180];
+const svg=$('dial'),knob=$('knob'),arc=$('arc');
+function setMin(m){m=Math.max(5,Math.min(180,Math.round(m/5)*5));minutes=m;
+ $('dialval').textContent=m>=60?Math.floor(m/60)+'h'+(m%60?(' '+m%60):''):m;
+ $('dialsub').textContent=m>=60?(m%60?'minutes':'hours'):'minutes';
+ const a=(m/180)*2*Math.PI-Math.PI/2,r=104,cx=130,cy=130;
+ const x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);knob.setAttribute('cx',x);knob.setAttribute('cy',y);
+ const sx=cx,sy=cy-r,large=m/180>.5?1:0;
+ arc.setAttribute('d',m>=180?`M${sx} ${sy} A${r} ${r} 0 1 1 ${sx-.01} ${sy}`:`M${sx} ${sy} A${r} ${r} 0 ${large} 1 ${x} ${y}`);
+ document.querySelectorAll('#presets .chip').forEach(c=>c.classList.toggle('on',+c.dataset.m===m));}
+function dialMove(e){const b=svg.getBoundingClientRect();const dx=e.clientX-(b.left+b.width/2),dy=e.clientY-(b.top+b.height/2);
+ let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=2*Math.PI;setMin(a/(2*Math.PI)*180);}
+let drag=false;svg.addEventListener('pointerdown',e=>{drag=true;svg.setPointerCapture(e.pointerId);dialMove(e)});
+svg.addEventListener('pointermove',e=>{if(drag)dialMove(e)});svg.addEventListener('pointerup',()=>drag=false);
+MINS.forEach(m=>{const b=document.createElement('button');b.className='chip';b.dataset.m=m;b.textContent=m>=60?m/60+'h':m+'m';b.onclick=()=>setMin(m);$('presets').appendChild(b)});
+setMin(30);
+
+const STYLES=[['tease','Tease and denial'],['edge','Edging'],['slow','Slow and sensual'],['fast','Fast and rough'],['fuck','Fuck your fist']];
+const TASKS=[['ruin','Ruined orgasm'],['balls','Ball slaps'],['hands','Hands-off holds'],['squeeze','Squeeze and block'],['stomach','Cock slaps'],['deny','Denial endings'],['extend','Surprise extensions'],['fakeouts','Countdown fake-outs']];
+const styleSel=new Set(),taskSel=new Set(['ruin','balls','hands','squeeze','stomach','extend','fakeouts']);
+function toggles(id,list,set){list.forEach(([k,l])=>{const b=document.createElement('button');b.className='opt'+(set.has(k)?' on':'');b.textContent=l;
+ b.onclick=()=>{set.has(k)?set.delete(k):set.add(k);b.classList.toggle('on')};$(id).appendChild(b)})}
+toggles('styles',STYLES,styleSel);toggles('tasks',TASKS,taskSel);
+const LV=['Gentle','Easy','Medium','Hard','Brutal'];
+$('level').oninput=()=>$('lvlname').textContent=LV[$('level').value-1];$('level').oninput();
+
+let metroOn=true,voiceOn=false,vMuted=true;
+$('metro').onclick=e=>{metroOn=!metroOn;e.target.textContent=metroOn?'On':'Off';e.target.classList.toggle('on',metroOn)};
+$('voice').onclick=e=>{voiceOn=!voiceOn;e.target.textContent=voiceOn?'On':'Off';e.target.classList.toggle('on',voiceOn)};
+$('vsound').onclick=e=>{vMuted=!vMuted;e.target.textContent=vMuted?'Muted':'With sound';e.target.classList.toggle('on',!vMuted)};
+function loadVoices(){const v=speechSynthesis.getVoices();$('voicesel').innerHTML=v.map((x,i)=>`<option value="${i}">${x.name} (${x.lang})</option>`).join('')}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+$('shuf').oninput=()=>$('shufv').textContent=$('shuf').value+'s';
+
+let media=[];
+$('files').onchange=e=>{media=[...e.target.files].map(f=>({url:URL.createObjectURL(f),video:f.type.startsWith('video')}));
+ $('count').textContent=media.length+' file(s) loaded. Files stay on your device.'};
+
+/* ---------- Metronome ---------- */
+let ac=null,bpm=0,baseBpm=0,speedMult=1,nextT=0,beatN=0,speedCtl=false,showNxt=true;
+function click(t,accent){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=accent?1200:850;o.type='square';
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.35,t+.003);g.gain.exponentialRampToValueAtTime(.0001,t+.05);
+ o.connect(g).connect(ac.destination);o.start(t);o.stop(t+.06)}
+function sched(){if(!ac||paused||!bpm)return;while(nextT<ac.currentTime+.15){
+ if(metroOn)click(nextT,beatN%4===0);
+ const d=Math.max(0,(nextT-ac.currentTime)*1000);setTimeout(()=>{$('beat').classList.add('p');setTimeout(()=>$('beat').classList.remove('p'),70)},d);
+ nextT+=60/bpm;beatN++}}
+function setBpm(v){baseBpm=v;bpm=v?Math.max(15,Math.round(v*speedMult)):0;
+ const pc=Math.round((speedMult-1)*100);
+ $('bpm').textContent=bpm?bpm+' strokes a minute'+(pc?' ('+(pc>0?'+':'')+pc+'%)':''):'';
+ if(bpm&&ac&&nextT<ac.currentTime)nextT=ac.currentTime+.05}
+function adj(d){speedMult=Math.max(.4,Math.min(2,+(speedMult+d).toFixed(2)));setBpm(baseBpm)}
+$('faster').onclick=()=>adj(.1);$('slower').onclick=()=>adj(-.1);
+$('speedctl').onclick=e=>{speedCtl=!speedCtl;e.target.textContent=speedCtl?'Allowed':'Off';e.target.classList.toggle('on',speedCtl)};
+$('shownext').onclick=e=>{showNxt=!showNxt;e.target.textContent=showNxt?'On':'Off';e.target.classList.toggle('on',showNxt)};
+
+/* ---------- Instruction content ---------- */
+const S={ // [text, bpm range, seconds range]
+crawl:[["Crawl. As slow as you can go. Almost not moving.",[18,32],[25,50]],["Painfully slow. Count every single stroke.",[20,35],[25,45]]],
+slow:[["Slow, full strokes. Tip to base. Don't you dare rush.",[40,60],[40,80]],["Slow motion. Feel every inch of it.",[35,55],[40,70]],["Only your fingertips, only the head. Barely touching.",[30,50],[30,60]]],
+mid:[["Steady grip. Steady rhythm. Match the beat.",[80,105],[40,80]],["Make a ring with your thumb and middle finger. Work it.",[85,110],[30,70]],["Squeeze your hand from tip to base. Don't half-ass it.",[70,95],[40,70]]],
+fast:[["Faster. Don't stop. Don't slow down.",[130,175],[25,50]],["Rough and fast. Tight grip. Take it.",[140,180],[20,45]],["Sprint. Keep up with the beat.",[150,190],[15,35]]],
+vfast:[["As fast as you can. Don't you dare stop.",[190,230],[12,25]],["Max speed. Go, go, go.",[200,240],[10,20]]],
+fuck:[["Make a fist and keep your hand still. Only your hips move. Fuck it.",[75,110],[40,90]],["Hands under your ass. Hips only. Fuck the air.",[70,100],[30,60]]]};
+const LAB={slow:'Slow strokes',mid:'Steady strokes',fast:'Fast strokes',fuck:'Fuck your fist',crawl:'Crawl speed',vfast:'Max speed'};
+const LINES={
+open:["Get comfortable. Put your cock in your hand. We start slow, and you do exactly what I say.","Breathe in. Hand around your cock. Don't move yet. Wait for it."],
+hands:["Let go. Hands in the air. Your cock can throb on its own.","Hands off. Sit on them. Breathe."],
+nearly:["You're not allowed to cum yet. Breathe.","Good. That's how close I want you.","Feel that ache? Hold on to it."]};
+
+function weights(){
+ const o=[],L=+$('level').value,sel=styleSel.size?styleSel:new Set(['tease','edge','slow','fast','fuck']);
+ if(sel.has('slow')){o.push(['slow',3]);o.push(['crawl',1.2])}
+ o.push(['mid',2]);o.push(['ramp',1.3]);o.push(['wave',1.3]);
+ if(sel.has('fast')){o.push(['fast',2+L*.5]);o.push(['vfast',.6+L*.3])}
+ if(sel.has('fuck'))o.push(['fuck',2]);
+ if(sel.has('edge')||sel.has('tease'))o.push(['edge',2+L*.7]);
+ if(sel.has('tease')&&taskSel.has('hands'))o.push(['handsoff',1.5+L*.4]);
+ if(taskSel.has('squeeze'))o.push(['squeeze',1+L*.3]);
+ if(taskSel.has('balls'))o.push(['balls',1.2+L*.2]);
+ if(taskSel.has('stomach'))o.push(['stomach',1]);
+ const tot=o.reduce((a,x)=>a+x[1],0);let r=Math.random()*tot;for(const[k,w]of o){if((r-=w)<=0)return k}return 'mid'}
+
+function stroke(kind){const[t,b,d]=PICK(S[kind]);const L=+$('level').value,boost=1+(L-3)*.05;
+ return{t,label:LAB[kind],bpm:Math.round(R(b[0],b[1])*boost),dur:R(d[0],d[1])}}
+function block(){
+ const k=weights(),L=+$('level').value,out=[];
+ if(S[k]){out.push(stroke(k));if(Math.random()<.4)out.push(stroke(PICK(['slow','mid','fast','crawl'])))}
+ else if(k==='ramp'){const a=RI(35,60),b=RI(150,210);
+   out.push({t:"Start slow and speed up, a little more every second. Don't stop until I say.",label:'Ramp up',ramp:[a,b],bpm:a,dur:R(40,80)});
+   out.push({t:"Now slow right down. Barely moving.",label:'Slow down',bpm:RI(25,40),dur:R(10,20)})}
+ else if(k==='wave'){const a=RI(45,70),b=RI(140,190),p=R(4,8);
+   out.push({t:"Fast, then slow, over and over. Follow the beat, don't think.",label:'Fast and slow waves',wave:[a,b,p],bpm:a,dur:R(40,70)})}
+ else if(k==='edge'){out.push(stroke('mid'));
+   out.push({t:PICK(["Now take yourself to the edge. Fast. Press the button when you're there.","Go to the edge. Don't fall off. Press the button the moment you get close."]),label:'Edge run',bpm:RI(130,170),dur:R(35,75),edgeWait:true});
+   out.push({t:"STOP. Hands off. Don't touch it.",label:'Short hold, hands off',bpm:0,dur:R(4+L,8+L*3)});
+   out.push({t:PICK(LINES.nearly),label:'Breathe',bpm:0,dur:R(3,7)})}
+ else if(k==='handsoff')out.push({t:PICK(LINES.hands),label:'Hands off',bpm:0,dur:R(5+L,10+L*3)});
+ else if(k==='squeeze'){out.push({t:"Squeeze the base. Hard. Hold it there.",label:'Squeeze and hold',bpm:0,dur:R(5,8+L*2)});
+   out.push({t:"Let go slowly. Breathe. Stay on the edge.",label:'Release',bpm:0,dur:R(4,8)})}
+ else if(k==='balls'){const n=RI(5,10+L*3);out.push({t:`Slap your balls. Open hand, ${n} times. Count them out loud.`,label:'Ball slaps',bpm:RI(70,90),dur:n*(60/80)+6});
+   out.push({t:"Now back to stroking. Slow.",label:'Slow strokes',bpm:55,dur:R(20,40)})}
+ else if(k==='stomach'){const n=RI(5,10+L*3);out.push({t:`Hold it and slap your cock against your stomach, ${n} times. Listen to the sound.`,label:'Cock slaps',bpm:RI(75,95),dur:n*(60/85)+6});
+   out.push({t:"Wrap your hand around it. Slow strokes. Feel how sensitive it is.",label:'Slow strokes',bpm:50,dur:R(20,35)})}
+ return out}
+
+/* ---------- Session engine ---------- */
+let run=false,paused=false,t0=0,pausedAt=0,pausedTotal=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play';
+let mi=-1,mtimer=null;
+function elapsed(){return((paused?pausedAt:performance.now())-t0-pausedTotal)/1000}
+function say(t){$('txt').textContent=t;if(voiceOn&&'speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);const v=speechSynthesis.getVoices()[+$('voicesel').value];if(v)u.voice=v;u.volume=+$('vvol').value;u.rate=.95;speechSynthesis.speak(u)}}
+function updateNext(){const el=$('next');
+ if(!showNxt||phase!=='play'){el.textContent='';return}
+ if(!queue.length)queue=block();const n=queue[0];
+ el.textContent='Next: '+(n.label||'Keep going')+(n.bpm?' at about '+Math.round((n.ramp?n.ramp[0]:n.bpm)*speedMult)+'/min':'')}
+function go(step){cur=step;curStart=elapsed();curEnd=curStart+step.dur;
+ if(step.countdown){step.fakeAt=R(2,5);step.willFake=step.fakes>0&&Math.random()<[0,.25,.45,.6,.75][+$('level').value-1]}
+ say(step.t);setBpm(step.bpm||0);updateNext()}
+function endPlan(){const L=+$('level').value;return minutes*60*R(.85,.95+L*.1)}
+function cdStep(fakes,secs){return{t:"Countdown. Keep stroking. Don't stop.",label:'Countdown',countdown:true,bpm:RI(150,190),dur:secs,fakes}}
+function begin(){
+ ac=ac||new(window.AudioContext||window.webkitAudioContext)();ac.resume();
+ $('setup').classList.add('hide');$('run').style.display='flex';
+ $('faster').classList.toggle('hide',!speedCtl);$('slower').classList.toggle('hide',!speedCtl);
+ speedMult=1;run=true;paused=false;t0=performance.now();pausedTotal=0;extends_=0;phase='play';planEnd=endPlan();
+ queue=[];nextT=ac.currentTime+.1;beatN=0;
+ go({t:PICK(LINES.open),label:'Slow warm-up',bpm:50,dur:R(25,40)});
+ $('empty').style.display=media.length?'none':'block';startMedia();
+ clearInterval(tick);tick=setInterval(loop,250);if(!window._sch)window._sch=setInterval(sched,40)}
+$('start').onclick=()=>{try{begin()}catch(err){alert('Could not start: '+err.message)}};
+function loop(){if(!run||paused)return;const e=elapsed();
+ const f=1-Math.exp(-3*Math.min(e,planEnd*1.3)/(minutes*60));
+ $('heatf').style.width=Math.max(0,Math.min(97,f*98.5+Math.sin(e/9)*1.5))+'%';
+ if(cur&&phase==='play'){const k=e-curStart;
+  if(cur.ramp)setBpm(cur.ramp[0]+(cur.ramp[1]-cur.ramp[0])*Math.min(1,k/cur.dur));
+  else if(cur.wave)setBpm(Math.floor(k/cur.wave[2])%2?cur.wave[1]:cur.wave[0])}
+ if(phase==='play'&&e>=planEnd){finale();return}
+ if(phase==='play'&&e>=curEnd){if(!queue.length)queue=block();go(queue.shift());return}
+ if(phase==='final'){
+  if(cur&&cur.countdown){const rem=curEnd-e;
+   if(cur.willFake&&rem<=cur.fakeAt){queue.unshift(cdStep(cur.fakes-1,RI(12,25)));
+    go({t:PICK(["No. Not now. Go longer.","Not yet. Keep going. I decide when.","Stop, not yet. You don't get to cum yet."]),label:'Fake-out',bpm:PICK([40,60,90]),dur:R(5,10)});return}
+   $('txt').textContent='Cum in '+Math.max(1,Math.ceil(rem))}
+  if(e>=curEnd){if(queue.length)go(queue.shift());else finish()}}}
+function finale(){const L=+$('level').value;
+ if(taskSel.has('extend')&&extends_<2&&Math.random()<(L-1)*.1){extends_++;planEnd+=R(180,420);phase='play';queue=[];go({t:"Did you think we were done? Not yet. Keep going.",label:'Surprise: more time',bpm:90,dur:R(15,25)});return}
+ let o='cum';const r2=Math.random();
+ if(taskSel.has('deny')&&L>=4&&r2<.2)o='deny';else if(taskSel.has('ruin')&&r2<(L-1)*.12+.05)o='ruin';
+ phase='final';
+ const fakes=taskSel.has('fakeouts')?L-1:0;
+ const build=[{t:"Last stretch. Faster, you're so close now.",label:'',bpm:140,dur:R(20,35)},{t:"Right at the edge. Keep going.",label:'',bpm:165,dur:R(10,20)},cdStep(fakes,10)];
+ if(o==='cum')queue=[...build,{t:"CUM NOW. Empty your balls. All of it.",bpm:170,dur:R(15,20)},{t:"Slow down. Gentle. Let it finish.",bpm:40,dur:12}];
+ else if(o==='ruin')queue=[...build,{t:"Cum now, then hands off the second it starts. Let it run out. Ruined.",bpm:0,dur:15}];
+ else queue=[...build,{t:"Stop. Hands off. No orgasm for you today. Put it away.",bpm:0,dur:10}];
+ $('next').textContent='';go(queue.shift())}
+function finish(){setBpm(0);say("Good. Session over.");clearInterval(tick);run=false;clearInterval(mtimer);$('heatf').style.width='100%';$('next').textContent=''}
+
+$('edge').onclick=()=>{if(!run||paused||phase!=='play')return;
+ if(cur&&cur.edgeWait)curEnd=elapsed();
+ else{queue.unshift({t:"STOP. Hands off. Hold it right there.",label:'Short hold',bpm:0,dur:R(5,12)});curEnd=elapsed()}}
+$('pause').onclick=e=>{if(!run)return;paused=!paused;if(paused){pausedAt=performance.now();e.target.textContent='Resume';setBpm(0);if('speechSynthesis'in window)speechSynthesis.cancel()}
+ else{pausedTotal+=performance.now()-pausedAt;e.target.textContent='Pause';setBpm(cur?cur.bpm||0:0)}}
+$('stop').onclick=()=>{run=false;clearInterval(tick);clearInterval(mtimer);setBpm(0);if('speechSynthesis'in window)speechSynthesis.cancel();$('run').style.display='none';$('setup').classList.remove('hide');$('stage').querySelectorAll('img,video').forEach(n=>n.remove())};
+$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+$('hidebtn').onclick=()=>$('panic').style.display='block';$('panic').onclick=()=>$('panic').style.display='none';
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('panic').style.display='block'});
+
+/* ---------- Media shuffle ---------- */
+function showNext(){if(!media.length)return;let n;do{n=RI(0,media.length-1)}while(media.length>1&&n===mi);mi=n;const m=media[n];
+ $('stage').querySelectorAll('img,video').forEach(x=>x.remove());
+ const el=document.createElement(m.video?'video':'img');el.src=m.url;
+ if(m.video){el.muted=vMuted;el.autoplay=true;el.loop=true;el.playsInline=true;el.play().catch(()=>{})}
+ $('stage').insertBefore(el,$('empty'))}
+function startMedia(){clearInterval(mtimer);showNext();mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$('shuf').value*1000)}
+</script></body></html>
