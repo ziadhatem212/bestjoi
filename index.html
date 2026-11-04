@@ -481,6 +481,7 @@ return out;
 
 /* ---------- Session engine ---------- */
 let run=false,paused=false,t0=0,pausedAt=0,pausedTotal=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play';
+let forceOutcome=null;
 let mi=-1,mtimer=null;
 
 function elapsed(){return((paused?pausedAt:performance.now())-t0-pausedTotal)/1000;}
@@ -604,7 +605,7 @@ else finish();
 
 function finale(){
 const L=+$('level').value;
-if(taskSel.has('extend')&&extends_<2&&Math.random()<(L-1)*.1){
+if(!forceOutcome&&taskSel.has('extend')&&extends_<2&&Math.random()<(L-1)*.1){
 extends_++;
 planEnd+=R(180,420);
 phase='play';
@@ -614,8 +615,9 @@ return;
 }
 
 let o='cum';
-const r2=Math.random();
-if(taskSel.has('deny')&&L>=4&&r2<.2)o='deny';
+const r2=Math.random(),forced=forceOutcome;forceOutcome=null;
+if(forced)o=forced;
+else if(taskSel.has('deny')&&L>=4&&r2<.2)o='deny';
 else if(taskSel.has('ruin')&&r2<(L-1)*.12+.05)o='ruin';
 
 phase='final';
@@ -690,10 +692,11 @@ if(e.key==='Escape')$('panic').style.display='block';
 });
 
 /* ---------- Media shuffle ---------- */
-function showNext(){
+function showNext(forced){
 if(!media.length)return;
 let n;
-do{n=RI(0,media.length-1)}while(media.length>1&&n===mi);
+if(Number.isInteger(forced)&&forced>=0&&forced<media.length)n=forced;
+else do{n=RI(0,media.length-1)}while(media.length>1&&n===mi);
 mi=n;
 const m=media[n];
 
@@ -1343,6 +1346,338 @@ window.addEventListener("beforeunload", () => {
 })();
 </script>
 
+<!-- ===== NEW: pictures, speed, ruin, countdown and live preview (WebRTC, Firebase signaling) ===== -->
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
+const OK=new Set(["mediaPrev","mediaNext","mediaSet","speedUp","speedDown","ruin","countdown","cancelCountdown"]);
+let db=null,me=null;
+const ready=new Promise(res=>{
+  const t=setInterval(()=>{
+    if(window.firebase&&firebase.apps&&firebase.apps.length){
+      clearInterval(t);
+      let done=false;
+      firebase.auth().onAuthStateChanged(x=>{if(x&&!done){done=true;me=x;db=firebase.database();res();}});
+    }
+  },200);
+});
+const st=document.createElement("style");
+st.textContent=`.rc-prev{position:sticky;top:0;z-index:3;background:var(--panel);padding:0 0 8px}
+.rc-prev video{width:100%;max-width:640px;aspect-ratio:16/9;background:#0d0710;border-radius:10px;display:block;margin:0 auto}
+.rc-st{font:13px system-ui;color:var(--mute);text-align:center;margin-top:4px}
+.rc-t{width:56px;height:56px;padding:0;border-radius:8px;overflow:hidden;font-size:11px}
+.rc-t img{width:100%;height:100%;object-fit:cover;display:block}
+#rcd{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;font:600 28px system-ui;padding:6px 16px;border-radius:12px;z-index:3}`;
+document.head.appendChild(st);
+const fmt=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
+
+/* ================= OWNER ================= */
+let oCode=null,oSess=null,oCmd=null,oRec=null,oPc=null,oSid=null,oCtrl=null,oCanvas=null,oStream=null,oDraw=null,oRetry=null,oPub=null,oOffs=[],cdEnd=0,cdHide=0;
+const rcd=document.createElement("div");rcd.id="rcd";rcd.className="hide";$("stage").appendChild(rcd);
+const badge=document.createElement("span");badge.className="sm hide";badge.style.cssText="color:var(--warm);font-size:13px";badge.textContent="● Live view on";
+$("bar").insertBefore(badge,$("bar").firstChild);
+
+const cdLeft=()=>cdEnd?(cdEnd-Date.now())/1000:0;
+setInterval(()=>{
+  if(cdEnd){
+    const l=cdLeft();rcd.classList.remove("hide");rcd.textContent="⏱ "+fmt(l);
+    if(l<=0){cdEnd=0;cdHide=Date.now()+3000;rcd.textContent="⏱ 0:00";}
+  }else if(cdHide&&Date.now()>cdHide){cdHide=0;rcd.classList.add("hide");}
+},250);
+
+function pubState(){
+  if(!oCode||!oCtrl||!db)return;
+  db.ref("live/"+oCode+"/state").set({
+    up:Date.now(),speed:Math.round(speedMult*100),run:!!run,paused:!!paused,phase:String(phase),
+    label:String(($("bpm").textContent)||""),mi:mi,n:media.length,cd:Math.max(0,Math.ceil(cdLeft())),cdOn:!!cdEnd
+  }).catch(()=>{});
+}
+async function pubMedia(){
+  if(!oCode||!oCtrl||!db)return;
+  const items=await Promise.all(media.slice(0,40).map(m=>new Promise(r=>{
+    if(m.video)return r({v:1,t:""});
+    const im=new Image();
+    im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=72;const x=c.getContext("2d");const s=Math.min(im.width,im.height);
+      x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,72,72);r({v:0,t:c.toDataURL("image/jpeg",.5)});};
+    im.onerror=()=>r({v:0,t:""});im.src=m.url;
+  })));
+  if(!oCode||!oCtrl)return;
+  db.ref("live/"+oCode+"/media").set({n:media.length,items:items,up:Date.now()}).catch(()=>{});
+}
+$("files").addEventListener("change",()=>setTimeout(()=>{pubMedia();pubState();},300));
+
+function wrapText(x,t,px,py,w,lh){
+  let l="";
+  for(const word of String(t).split(" ")){
+    const tt=l?l+" "+word:word;
+    if(x.measureText(tt).width>w&&l){x.fillText(l,px,py);py+=lh;l=word;}else l=tt;
+  }
+  x.fillText(l,px,py);
+}
+function drawFrame(){
+  const c=oCanvas,x=c.getContext("2d"),W=c.width,H=c.height;
+  x.fillStyle="#0d0710";x.fillRect(0,0,W,H);
+  const running=$("run").style.display==="flex";
+  const m=document.querySelector("#stage img, #stage video");
+  if(running&&m){
+    const w=m.naturalWidth||m.videoWidth,h=m.naturalHeight||m.videoHeight;
+    if(w&&h){const s=Math.min(W/w,H/h);try{x.drawImage(m,(W-w*s)/2,(H-h*s)/2,w*s,h*s);}catch(e){}}
+  }
+  x.textAlign="center";
+  if(!running){x.fillStyle="#a995b0";x.font="20px system-ui";x.fillText("Setup screen - session not started",W/2,H/2);}
+  else{
+    const g=x.createLinearGradient(0,H-150,0,H);g.addColorStop(0,"rgba(13,7,16,0)");g.addColorStop(.6,"rgba(13,7,16,.92)");
+    x.fillStyle=g;x.fillRect(0,H-150,W,150);
+    x.fillStyle="#f1e7ec";x.font="22px Georgia,serif";wrapText(x,$("txt").textContent,W/2,H-96,W-40,27);
+    x.fillStyle="#ffb347";x.font="13px system-ui";x.fillText($("bpm").textContent,W/2,H-34);
+    x.fillStyle="#a995b0";x.fillText($("next").textContent,W/2,H-16);
+    x.fillStyle="#1d1122";x.fillRect(0,H-6,W,6);
+    x.fillStyle="#ff3d81";x.fillRect(0,H-6,W*(parseFloat($("heatf").style.width)||0)/100,6);
+    if($("beat").classList.contains("p")){x.beginPath();x.arc(W-20,20,8,0,7);x.fill();}
+    if(paused){x.fillStyle="rgba(0,0,0,.5)";x.fillRect(0,0,W,H);x.fillStyle="#fff";x.font="32px system-ui";x.fillText("PAUSED",W/2,H/2);}
+  }
+  if(!rcd.classList.contains("hide")){
+    x.fillStyle="rgba(0,0,0,.65)";x.fillRect(W/2-80,10,160,44);
+    x.fillStyle="#fff";x.font="600 28px system-ui";x.fillText(rcd.textContent,W/2,43);
+  }
+}
+
+function stopRtc(){
+  clearInterval(oDraw);oDraw=null;clearTimeout(oRetry);
+  oOffs.forEach(o=>{try{o[0].off(o[1],o[2]);}catch(e){}});oOffs=[];
+  if(oPc){try{oPc.close();}catch(e){}oPc=null;}
+  if(oStream){oStream.getTracks().forEach(t=>t.stop());oStream=null;}
+  oSid=null;badge.classList.add("hide");
+}
+async function startRtc(){
+  stopRtc();
+  if(!oCode||!oCtrl||!window.RTCPeerConnection)return;
+  const code=oCode,sid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  oSid=sid;
+  if(!oCanvas){oCanvas=document.createElement("canvas");oCanvas.width=640;oCanvas.height=360;}
+  if(!oCanvas.captureStream){return;}
+  oStream=oCanvas.captureStream(10);
+  drawFrame();oDraw=setInterval(drawFrame,100);badge.classList.remove("hide");
+  const pc=oPc=new RTCPeerConnection(ICE);
+  oStream.getTracks().forEach(t=>pc.addTrack(t,oStream));
+  const L=db.ref("live/"+code);
+  pc.onicecandidate=e=>{if(e.candidate&&sid===oSid)L.child("ownerIce/"+sid).push(e.candidate.toJSON()).catch(()=>{});};
+  pc.onconnectionstatechange=()=>{
+    if(pc!==oPc)return;
+    if(pc.connectionState==="failed"||pc.connectionState==="disconnected"){
+      clearTimeout(oRetry);
+      oRetry=setTimeout(()=>{if(pc===oPc&&pc.connectionState!=="connected")startRtc();},4000);
+    }
+  };
+  try{
+    await L.child("answer").remove();await L.child("ctrlIce").remove();await L.child("ownerIce").remove();
+    if(pc!==oPc)return;
+    const ansRef=L.child("answer"),ansH=async s=>{
+      const v=s.val();
+      if(v&&v.sid===sid&&pc===oPc&&pc.signalingState==="have-local-offer"){
+        try{await pc.setRemoteDescription({type:"answer",sdp:v.sdp});}catch(e){}
+      }
+    };
+    ansRef.on("value",ansH);oOffs.push([ansRef,"value",ansH]);
+    const iceRef=L.child("ctrlIce/"+sid),iceH=s=>{if(pc===oPc&&pc.remoteDescription){pc.addIceCandidate(s.val()).catch(()=>{});}};
+    iceRef.on("child_added",iceH);oOffs.push([iceRef,"child_added",iceH]);
+    const offer=await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await L.child("rtc").set({sid:sid,type:"offer",sdp:offer.sdp,t:Date.now()});
+  }catch(e){console.error("RTC owner error:",e);}
+}
+
+function doRuin(){
+  if(!run||paused)return;
+  const END=/^(CUM NOW|Slow down\. Gentle|Stop\. Hands off\. No orgasm|Cum now, then)/;
+  if(phase==="play"){forceOutcome="ruin";finale();}
+  else if(phase==="final"){
+    if(cur&&END.test(cur.t))return;
+    queue=queue.filter(s=>!END.test(s.t));
+    queue.push({t:"Cum now, then hands off the second it starts. Let it run out. Ruined.",bpm:0,dur:15});
+  }
+}
+function applyCmd(c){
+  if(!OK.has(c.type))return;
+  const n=media.length;
+  if(c.type==="mediaNext"||c.type==="mediaPrev"||c.type==="mediaSet"){
+    if(!n)return;
+    let i;
+    if(c.type==="mediaSet"){i=c.index;if(!(Number.isInteger(i)&&i>=0&&i<n))return;}
+    else i=((mi<0?0:mi)+(c.type==="mediaNext"?1:-1)+n)%n;
+    showNext(i);
+    if(run){clearInterval(mtimer);mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$("shuf").value*1000);}
+  }
+  else if(c.type==="speedUp"){if(run)adj(.1);}
+  else if(c.type==="speedDown"){if(run)adj(-.1);}
+  else if(c.type==="ruin")doRuin();
+  else if(c.type==="countdown"){
+    const m=c.minutes;
+    if(typeof m==="number"&&isFinite(m)&&m>=.1&&m<=180){cdEnd=Date.now()+m*60000;cdHide=0;}
+  }
+  else if(c.type==="cancelCountdown"){cdEnd=0;cdHide=0;rcd.classList.add("hide");}
+}
+async function onCommand(snap){
+  const c=snap.val();
+  if(!c||!oSess)return;
+  // pause/resume/stop are handled by the original listener; only handle new types here
+  if(!OK.has(c.type))return;
+  try{
+    const cur0=(await oSess.get()).val();
+    const fresh=c.createdAt&&Math.abs(Date.now()-c.createdAt)<30000;
+    if(!cur0||!cur0.remoteAllowed||cur0.status==="ended"||!cur0.controllerUid||c.uid!==cur0.controllerUid||!fresh){snap.ref.remove().catch(()=>{});return;}
+    applyCmd(c);pubState();
+    snap.ref.remove().catch(()=>{});
+  }catch(e){console.error("Remote command error:",e);}
+}
+function stopOwner(){
+  stopRtc();clearInterval(oPub);
+  if(oSess){if(oCmd)oSess.child("commands").off("child_added",oCmd);}
+  if(oRec)oRec[0].off("value",oRec[1]);
+  oSess=oCmd=oRec=null;oCtrl=null;oCode=null;
+}
+function startOwner(code){
+  if(oCode===code)return;
+  stopOwner();oCode=code;oSess=db.ref("sessions/"+code);
+  oSess.on("value",s=>{
+    if(oCode!==code)return;
+    const v=s.val(),c=(v&&v.controllerUid)||null;
+    if(c!==oCtrl){
+      oCtrl=c;
+      if(c){startRtc();pubMedia();pubState();}
+      else{stopRtc();db.ref("live/"+code).remove().catch(()=>{});}
+    }
+    if(v&&v.status==="ended")stopRtc();
+  });
+  oCmd=onCommand;oSess.child("commands").on("child_added",oCmd);
+  const rr=db.ref("live/"+code+"/reconnect");let first=true;
+  const rh=s=>{if(first){first=false;return;}if(s.val()&&oCtrl)startRtc();};
+  rr.on("value",rh);oRec=[rr,rh];
+  oPub=setInterval(pubState,1000);
+}
+ready.then(()=>{
+  const el=$("remoteOwnerCode");
+  const chk=()=>{const t=el.textContent.trim();if(/^[A-HJ-NP-Z2-9]{8}$/.test(t))startOwner(t);};
+  new MutationObserver(chk).observe(el,{childList:true,characterData:true,subtree:true});chk();
+});
+
+/* ================= CONTROLLER ================= */
+let cCode=null,cPc=null,cSid=null,cOffs=[],cLast=0,cWatch=null,cReq=0,cBuilt=false;
+const panel=$("remoteControllerPanel");
+function buildUI(){
+  if(cBuilt)return;cBuilt=true;
+  const w=document.createElement("div");
+  w.innerHTML=`<div class="rc-prev"><video id="rcVideo" autoplay playsinline muted></video><div id="rcLive" class="rc-st">Preview: waiting for owner...</div></div>
+<div class="row"><button class="chip" id="rcPrev">◀ Previous picture</button><button class="chip" id="rcNext">Next picture ▶</button></div>
+<div id="rcThumbs" class="chips" style="justify-content:flex-start"></div>
+<div class="row"><button class="chip" id="rcSlow">Slower −10%</button><strong id="rcSpeed">100%</strong><button class="chip" id="rcFast">Faster +10%</button></div>
+<div class="row"><button class="chip" id="rcRuin" style="background:var(--hot);border-color:var(--hot);color:#fff">Ruin</button><span id="rcPhase" class="note" style="margin:0"></span></div>
+<div class="row"><input id="rcMin" type="number" min="0.1" max="180" step="0.5" value="5" style="width:80px;background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px"><span class="sm">minutes</span>
+<button class="chip" id="rcCdGo">Start countdown</button><button class="ghost" id="rcCdStop">Cancel countdown</button></div><div id="rcCdInfo" class="note"></div>`;
+  panel.prepend(w);
+  $("rcPrev").onclick=()=>send("mediaPrev");
+  $("rcNext").onclick=()=>send("mediaNext");
+  $("rcSlow").onclick=()=>send("speedDown");
+  $("rcFast").onclick=()=>send("speedUp");
+  $("rcRuin").onclick=()=>{if(confirm("Trigger Ruin on the owner device?"))send("ruin");};
+  $("rcCdGo").onclick=()=>{
+    const m=parseFloat($("rcMin").value);
+    if(!(m>=.1&&m<=180)){setLive("Countdown must be 0.1 to 180 minutes.");return;}
+    send("countdown",{minutes:m});
+  };
+  $("rcCdStop").onclick=()=>send("cancelCountdown");
+}
+async function send(type,extra){
+  if(!cCode||!db)return;
+  try{await db.ref("sessions/"+cCode+"/commands").push(Object.assign({type:type,uid:me.uid,createdAt:Date.now()},extra||{}));}
+  catch(e){setLive("Could not send: "+e.message);}
+}
+function setLive(t){const e=$("rcLive");if(e)e.textContent=t;}
+function closeCPc(){
+  if(cPc){try{cPc.close();}catch(e){}cPc=null;}
+}
+async function onOffer(s){
+  const v=s.val();
+  if(!v||v.sid===cSid||!cCode)return;
+  cSid=v.sid;closeCPc();
+  const sid=v.sid,L=db.ref("live/"+cCode),pc=cPc=new RTCPeerConnection(ICE);
+  pc.ontrack=e=>{const vid=$("rcVideo");vid.srcObject=e.streams[0];vid.play().catch(()=>{});};
+  pc.onicecandidate=e=>{if(e.candidate)L.child("ctrlIce/"+sid).push(e.candidate.toJSON()).catch(()=>{});};
+  pc.onconnectionstatechange=()=>{
+    if(pc!==cPc)return;
+    const s2=pc.connectionState;
+    setLive(s2==="connected"?"● Live preview":s2==="connecting"||s2==="new"?"Connecting preview...":"Preview disconnected - reconnecting...");
+  };
+  try{
+    await pc.setRemoteDescription({type:"offer",sdp:v.sdp});
+    const iceRef=L.child("ownerIce/"+sid),iceH=x=>{if(pc===cPc)pc.addIceCandidate(x.val()).catch(()=>{});};
+    iceRef.on("child_added",iceH);cOffs.push([iceRef,"child_added",iceH]);
+    const ans=await pc.createAnswer();
+    await pc.setLocalDescription(ans);
+    await L.child("answer").set({sid:sid,type:"answer",sdp:ans.sdp});
+  }catch(e){console.error("RTC controller error:",e);setLive("Preview error: "+e.message);}
+}
+function onState(s){
+  const v=s.val();if(!v)return;
+  cLast=Date.now();
+  $("rcSpeed").textContent=v.speed+"%";
+  $("rcPhase").textContent=(v.run?(v.paused?"Paused":"Running"):"Session not started")+" · phase: "+v.phase+(v.label?" · "+v.label:"");
+  $("rcCdInfo").textContent=v.cdOn?"Countdown running on owner device: "+fmt(v.cd):"";
+  document.querySelectorAll("#rcThumbs .rc-t").forEach((b,i)=>b.classList.toggle("on",i===v.mi));
+}
+function onMedia(s){
+  const v=s.val(),box=$("rcThumbs");
+  box.innerHTML="";
+  if(!v||!v.items)return;
+  const arr=Array.isArray(v.items)?v.items:Object.values(v.items);
+  arr.forEach((it,i)=>{
+    const b=document.createElement("button");
+    b.className="chip rc-t";
+    if(it&&it.t){const im=document.createElement("img");im.src=it.t;im.alt=String(i+1);b.appendChild(im);}
+    else b.textContent=(it&&it.v?"▶ ":"")+(i+1);
+    b.onclick=()=>send("mediaSet",{index:i});
+    box.appendChild(b);
+  });
+}
+function startCtrl(){
+  const code=$("remoteJoinCode").value.trim().toUpperCase();
+  if(!/^[A-HJ-NP-Z2-9]{8}$/.test(code)||!db)return;
+  stopCtrl();buildUI();cCode=code;cSid=null;cLast=0;
+  const L=db.ref("live/"+code);
+  [["rtc",onOffer],["state",onState],["media",onMedia]].forEach(p=>{
+    const r=L.child(p[0]);r.on("value",p[1],e=>setLive("Preview error: "+e.message));cOffs.push([r,"value",p[1]]);
+  });
+  setLive("Preview: waiting for owner...");
+  cWatch=setInterval(()=>{
+    if(!cCode)return;
+    const stale=!cLast||Date.now()-cLast>6000;
+    if(stale){setLive("Owner not responding - waiting to reconnect...");return;}
+    const bad=!cPc||["failed","disconnected","closed"].includes(cPc.connectionState);
+    if(bad&&Date.now()-cReq>8000){
+      cReq=Date.now();setLive("Preview disconnected - reconnecting...");
+      db.ref("live/"+cCode+"/reconnect").set(Date.now()).catch(()=>{});
+    }
+  },2000);
+}
+function stopCtrl(){
+  clearInterval(cWatch);cWatch=null;
+  cOffs.forEach(o=>{try{o[0].off(o[1],o[2]);}catch(e){}});cOffs=[];
+  closeCPc();cCode=null;cSid=null;
+  const v=$("rcVideo");if(v)v.srcObject=null;
+}
+ready.then(()=>{
+  const sync=()=>{
+    const vis=!panel.classList.contains("hide");
+    if(vis&&!cCode)startCtrl();
+    else if(!vis&&cCode){stopCtrl();setLive("Preview: waiting for owner...");}
+  };
+  new MutationObserver(sync).observe(panel,{attributes:true,attributeFilter:["class"]});sync();
+});
+window.addEventListener("beforeunload",()=>{stopRtc();stopCtrl();});
+})();
+</script>
 
 </body>
 </html>
