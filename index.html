@@ -940,73 +940,55 @@ async function requestJoin() {
   const code = el("remoteJoinCode").value.trim().toUpperCase();
 
   if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
-    statusJoin("Enter a valid 8-character code.");
+    setRemoteStatus("Enter a valid 8-character code.");
     return;
   }
-
-  if (!user || !db) {
-    statusJoin("Firebase is not ready. Please wait and try again.");
-    return;
-  }
-
-  detachControllerListener();
-  controllerCode = code;
-
-  const sessionRef = db.ref("sessions/" + code);
-  const requestRef = db.ref(
-    "joinRequests/" + code + "/" + user.uid
-  );
 
   try {
-    // FIRST: Create the join request.
-    await requestRef.set({
-      uid: user.uid,
-      requestedAt: firebase.database.ServerValue.TIMESTAMP
-    });
+    await remoteAuthSignIn();
 
-    // SECOND: Read the session after the request exists.
-    const snap = await sessionRef.get();
-    const session = snap.val();
+    const uid = auth.currentUser.uid;
+    const requestRef = db.ref(`joinRequests/${code}/${uid}`);
+    const sessionRef = db.ref(`sessions/${code}`);
 
-    if (!session || session.status === "ended") {
-      await requestRef.remove();
-      statusJoin("Session not found or already ended.");
-      return;
+    // STEP 1: Create the join request
+    try {
+      await requestRef.set({
+        uid: uid,
+        createdAt: Date.now()
+      });
+      console.log("STEP 1 SUCCESS: Join request created.");
+    } catch (error) {
+      console.error("STEP 1 FAILED: Could not create join request.", error);
+      throw new Error("STEP 1: " + error.message);
     }
 
-    if (!session.remoteAllowed) {
-      await requestRef.remove();
-      statusJoin("Remote control is disabled.");
-      return;
+    // STEP 2: Read the session
+    let snapshot;
+
+    try {
+      snapshot = await sessionRef.once("value");
+      console.log("STEP 2 SUCCESS: Session read.", snapshot.val());
+    } catch (error) {
+      console.error("STEP 2 FAILED: Could not read session.", error);
+      throw new Error("STEP 2: " + error.message);
     }
 
-    statusJoin("Request sent. Waiting for owner approval.");
+    if (!snapshot.exists()) {
+      throw new Error("Session code does not exist.");
+    }
 
-    controllerSessionRef = sessionRef;
+    const session = snapshot.val();
 
-    controllerSessionHandler = snapshot => {
-      const data = snapshot.val();
+    if (session.remoteAllowed !== true) {
+      throw new Error("Remote control is disabled for this session.");
+    }
 
-      if (!data || data.status === "ended") {
-        statusJoin("The session has ended.");
-        show("remoteControllerPanel", false);
-        return;
-      }
-
-      if (data.controllerUid === user.uid && data.remoteAllowed) {
-        statusJoin("Connected! Remote controls are available.");
-        show("remoteControllerPanel", true);
-      } else {
-        statusJoin("Waiting for owner approval...");
-        show("remoteControllerPanel", false);
-      }
-    };
-
-    sessionRef.on("value", controllerSessionHandler);
+    setRemoteStatus("Request sent. Waiting for approval.");
 
   } catch (error) {
-    statusJoin("Could not request access: " + error.message);
-    console.error("Firebase join error:", error);
+    console.error("REQUEST JOIN ERROR:", error);
+    setRemoteStatus("Could not request access: " + error.message);
   }
 }
 
