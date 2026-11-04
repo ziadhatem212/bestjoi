@@ -1,0 +1,12 @@
+{
+  "name": "my-session-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Session website with a Node.js and WebSocket server",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
