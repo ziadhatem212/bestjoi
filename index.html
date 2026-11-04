@@ -934,7 +934,10 @@ async function createOwnerSession() {
       const command = snapshot.val();
 
       if (!command || !ownerRef) return;
-
+// Leave new remote commands for the new command listener.
+if (!["pause", "resume", "stop"].includes(command.type)) {
+  return;
+}
       try {
         const currentSnap = await ownerRef.get();
         const current = currentSnap.val();
