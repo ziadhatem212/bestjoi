@@ -724,12 +724,13 @@ mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$('shuf').value*1000);
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
+
 <script>
 (() => {
 "use strict";
 
 const firebaseConfig = {
- apiKey: "AIzaSyCKWXWEfKQeljEW2m2cqulKLDz7J3zW-l8",
+  apiKey: "AIzaSyCKWXWEfKQeljEW2m2cqulKLD7zJ3zW-l8",
   authDomain: "bestjoi.firebaseapp.com",
   databaseURL: "https://bestjoi-default-rtdb.firebaseio.com",
   projectId: "bestjoi",
@@ -739,351 +740,609 @@ const firebaseConfig = {
 };
 
 const el = id => document.getElementById(id);
-const setText = (id, value) => { el(id).textContent = value; };
-const setDisabled = (id, value) => { el(id).disabled = value; };
-const show = (id, value) => el(id).classList.toggle("hide", !value);
+const setText = (id, value) => {
+  el(id).textContent = value;
+};
+const setDisabled = (id, value) => {
+  el(id).disabled = value;
+};
+const show = (id, value) => {
+  el(id).classList.toggle("hide", !value);
+};
 
-let db, user;
+/* ---------- Firebase state ---------- */
+
+// These are global within this Firebase script.
+let auth = null;
+let db = null;
+let user = null;
+let authPromise = null;
+
 let ownerCode = null;
 let ownerRef = null;
 let pendingUid = null;
+
 let controllerCode = null;
 let controllerSessionRef = null;
+let controllerSessionHandler = null;
+
 let ownerRequestRef = null;
 let ownerRequestHandler = null;
 let ownerCommandRef = null;
 let ownerCommandHandler = null;
-let controllerSessionHandler = null;
 
-function statusOwner(message) { setText("remoteOwnerStatus", message); }
-function statusJoin(message) { setText("remoteJoinStatus", message); }
+function statusOwner(message) {
+  setText("remoteOwnerStatus", message);
+}
+
+function statusJoin(message) {
+  setText("remoteJoinStatus", message);
+}
+
+/* ---------- Authentication ---------- */
+
+async function remoteAuthSignIn() {
+  if (auth && db && user) {
+    return user;
+  }
+
+  if (authPromise) {
+    return authPromise;
+  }
+
+  authPromise = (async () => {
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+
+      auth = firebase.auth();
+
+      if (auth.currentUser) {
+        user = auth.currentUser;
+      } else {
+        const credential = await auth.signInAnonymously();
+        user = credential.user;
+      }
+
+      db = firebase.database();
+
+      statusOwner("Connected to Firebase. Create a code when ready.");
+      statusJoin("Connected to Firebase. Enter the owner's code.");
+
+      console.log("Firebase authentication successful:", user.uid);
+
+      return user;
+
+    } catch (error) {
+      console.error("Firebase authentication failed:", error);
+
+      user = null;
+      db = null;
+      authPromise = null;
+
+      statusOwner("Firebase sign-in failed: " + error.message);
+      statusJoin("Firebase sign-in failed: " + error.message);
+
+      throw error;
+    }
+  })();
+
+  return authPromise;
+}
+
+/* ---------- Helpers ---------- */
 
 function makeCode() {
-const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const bytes = new Uint8Array(8);
-crypto.getRandomValues(bytes);
-return Array.from(bytes, b => alphabet[b % alphabet.length]).join("");
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(8);
+
+  crypto.getRandomValues(bytes);
+
+  return Array.from(
+    bytes,
+    b => alphabet[b % alphabet.length]
+  ).join("");
 }
 
 function detachOwnerListeners() {
-if (ownerRequestRef && ownerRequestHandler)
-ownerRequestRef.off("child_added", ownerRequestHandler);
+  if (ownerRequestRef && ownerRequestHandler) {
+    ownerRequestRef.off("child_added", ownerRequestHandler);
+  }
 
-if (ownerCommandRef && ownerCommandHandler)
-ownerCommandRef.off("child_added", ownerCommandHandler);
+  if (ownerCommandRef && ownerCommandHandler) {
+    ownerCommandRef.off("child_added", ownerCommandHandler);
+  }
 
-ownerRequestRef = ownerRequestHandler = null;
-ownerCommandRef = ownerCommandHandler = null;
+  ownerRequestRef = null;
+  ownerRequestHandler = null;
+  ownerCommandRef = null;
+  ownerCommandHandler = null;
 }
 
 function detachControllerListener() {
-if (controllerSessionRef && controllerSessionHandler)
-controllerSessionRef.off("value", controllerSessionHandler);
+  if (controllerSessionRef && controllerSessionHandler) {
+    controllerSessionRef.off("value", controllerSessionHandler);
+  }
 
-controllerSessionRef = controllerSessionHandler = null;
+  controllerSessionRef = null;
+  controllerSessionHandler = null;
 }
+
+/* ---------- Owner: create session ---------- */
 
 async function createOwnerSession() {
-if (!user) {
-statusOwner("Signing in. Please wait, then try again.");
-return;
+  try {
+    await remoteAuthSignIn();
+
+    detachOwnerListeners();
+
+    ownerCode = makeCode();
+    ownerRef = db.ref("sessions/" + ownerCode);
+
+    await ownerRef.set({
+      ownerUid: user.uid,
+      controllerUid: null,
+      remoteAllowed: true,
+      status: "waiting",
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    setText("remoteOwnerCode", ownerCode);
+    setText("remoteRequestStatus", "No pending request.");
+
+    setDisabled("remoteDisconnect", false);
+    setDisabled("remoteApprove", true);
+    setDisabled("remoteReject", true);
+
+    pendingUid = null;
+
+    statusOwner("Code created. Waiting for a join request.");
+
+    /* Listen for join requests. */
+
+    ownerRequestRef = db.ref("joinRequests/" + ownerCode);
+
+    ownerRequestHandler = snapshot => {
+      const request = snapshot.val();
+
+      if (!request || !request.uid) return;
+
+      pendingUid = request.uid;
+
+      setText(
+        "remoteRequestStatus",
+        "A device is requesting access."
+      );
+
+      setDisabled("remoteApprove", false);
+      setDisabled("remoteReject", false);
+    };
+
+    ownerRequestRef.on("child_added", ownerRequestHandler);
+
+    /* Listen for controller commands. */
+
+    ownerCommandRef = db.ref(
+      "sessions/" + ownerCode + "/commands"
+    );
+
+    ownerCommandHandler = async snapshot => {
+      const command = snapshot.val();
+
+      if (!command || !ownerRef) return;
+
+      try {
+        const currentSnap = await ownerRef.get();
+        const current = currentSnap.val();
+
+        const fresh = command.createdAt &&
+          (Date.now() - command.createdAt < 30000);
+
+        if (
+          !current ||
+          !current.remoteAllowed ||
+          command.uid !== current.controllerUid ||
+          !fresh
+        ) {
+          await snapshot.ref.remove();
+          return;
+        }
+
+        // Only pause, resume and stop are accepted.
+        if (command.type === "pause" && run && !paused) {
+          el("pause").click();
+        }
+
+        if (command.type === "resume" && run && paused) {
+          el("pause").click();
+        }
+
+        if (command.type === "stop" && run) {
+          el("stop").click();
+        }
+
+        await snapshot.ref.remove();
+
+        if (command.type === "stop") {
+          await ownerRef.update({
+            status: "ended",
+            controllerUid: null
+          });
+        }
+
+      } catch (error) {
+        statusOwner("Command error: " + error.message);
+      }
+    };
+
+    ownerCommandRef.on("child_added", ownerCommandHandler);
+
+    console.log("Owner session created:", ownerCode);
+
+  } catch (error) {
+    console.error("CREATE SESSION ERROR:", error);
+    statusOwner("Could not create code: " + error.message);
+  }
 }
 
-detachOwnerListeners();
-ownerCode = makeCode();
-ownerRef = db.ref("sessions/" + ownerCode);
-
-try {
-await ownerRef.set({
-ownerUid: user.uid,
-controllerUid: null,
-remoteAllowed: true,
-status: "waiting",
-createdAt: firebase.database.ServerValue.TIMESTAMP
-});
-
-setText("remoteOwnerCode", ownerCode);
-setText("remoteRequestStatus", "No pending request.");
-setDisabled("remoteDisconnect", false);
-setDisabled("remoteApprove", true);
-setDisabled("remoteReject", true);
-pendingUid = null;
-
-statusOwner("Code created. Waiting for a join request.");
-
-ownerRequestRef = db.ref("joinRequests/" + ownerCode);
-
-ownerRequestHandler = snapshot => {
-const request = snapshot.val();
-if (!request || !request.uid) return;
-
-pendingUid = request.uid;
-setText("remoteRequestStatus", "A device is requesting access.");
-setDisabled("remoteApprove", false);
-setDisabled("remoteReject", false);
-};
-
-ownerRequestRef.on("child_added", ownerRequestHandler);
-
-ownerCommandRef = db.ref("sessions/" + ownerCode + "/commands");
-
-ownerCommandHandler = async snapshot => {
-const command = snapshot.val();
-if (!command || !ownerRef) return;
-
-try {
-const currentSnap = await ownerRef.get();
-const current = currentSnap.val();
-
-const fresh = command.createdAt &&
-(Date.now() - command.createdAt < 30000);
-
-if (!current || !current.remoteAllowed ||
-command.uid !== current.controllerUid || !fresh) {
-await snapshot.ref.remove();
-return;
-}
-
-// Remote commands are deliberately limited to pause, resume and stop.
-if (command.type === "pause" && run && !paused) el("pause").click();
-if (command.type === "resume" && run && paused) el("pause").click();
-if (command.type === "stop" && run) el("stop").click();
-
-await snapshot.ref.remove();
-
-if (command.type === "stop")
-await ownerRef.update({ status: "ended", controllerUid: null });
-
-} catch (error) {
-statusOwner("Command error: " + error.message);
-}
-};
-
-ownerCommandRef.on("child_added", ownerCommandHandler);
-
-} catch (error) {
-statusOwner("Could not create code: " + error.message);
-}
-}
+/* ---------- Owner: approve request ---------- */
 
 async function approveRequest() {
-if (!pendingUid || !ownerRef || !ownerCode) return;
+  if (!pendingUid || !ownerRef || !ownerCode) return;
 
-const approvedUid = pendingUid;
+  const approvedUid = pendingUid;
 
-try {
-await ownerRef.update({
-controllerUid: approvedUid,
-status: "connected",
-remoteAllowed: true
-});
+  try {
+    await ownerRef.update({
+      controllerUid: approvedUid,
+      status: "connected",
+      remoteAllowed: true
+    });
 
-await db.ref("joinRequests/" + ownerCode + "/" + approvedUid).remove();
+    await db.ref(
+      "joinRequests/" + ownerCode + "/" + approvedUid
+    ).remove();
 
-pendingUid = null;
+    pendingUid = null;
 
-setText("remoteRequestStatus", "Controller approved.");
-setDisabled("remoteApprove", true);
-setDisabled("remoteReject", true);
+    setText("remoteRequestStatus", "Controller approved.");
+    setDisabled("remoteApprove", true);
+    setDisabled("remoteReject", true);
 
-statusOwner("Controller connected.");
+    statusOwner("Controller connected.");
 
-} catch (error) {
-statusOwner("Approval failed: " + error.message);
+  } catch (error) {
+    console.error("APPROVAL ERROR:", error);
+    statusOwner("Approval failed: " + error.message);
+  }
 }
-}
+
+/* ---------- Owner: reject request ---------- */
 
 async function rejectRequest() {
-if (!pendingUid || !ownerCode) return;
+  if (!pendingUid || !ownerCode) return;
 
-const rejectedUid = pendingUid;
+  const rejectedUid = pendingUid;
 
-try {
-await db.ref("joinRequests/" + ownerCode + "/" + rejectedUid).remove();
+  try {
+    await db.ref(
+      "joinRequests/" + ownerCode + "/" + rejectedUid
+    ).remove();
 
-pendingUid = null;
+    pendingUid = null;
 
-setText("remoteRequestStatus", "Request rejected.");
-setDisabled("remoteApprove", true);
-setDisabled("remoteReject", true);
+    setText("remoteRequestStatus", "Request rejected.");
+    setDisabled("remoteApprove", true);
+    setDisabled("remoteReject", true);
 
-} catch (error) {
-statusOwner("Could not reject request: " + error.message);
+    statusOwner("Request rejected.");
+
+  } catch (error) {
+    statusOwner("Could not reject request: " + error.message);
+  }
 }
-}
+
+/* ---------- Owner: disconnect controller ---------- */
 
 async function disconnectController() {
-if (!ownerRef) return;
+  if (!ownerRef) return;
 
-try {
-await ownerRef.update({ controllerUid: null, status: "waiting" });
+  try {
+    await ownerRef.update({
+      controllerUid: null,
+      status: "waiting"
+    });
 
-if (ownerCode)
-await db.ref("sessions/" + ownerCode + "/commands").remove();
+    if (ownerCode) {
+      await db.ref(
+        "sessions/" + ownerCode + "/commands"
+      ).remove();
+    }
 
-pendingUid = null;
+    pendingUid = null;
 
-setText("remoteRequestStatus", "No pending request.");
-setDisabled("remoteApprove", true);
-setDisabled("remoteReject", true);
+    setText("remoteRequestStatus", "No pending request.");
+    setDisabled("remoteApprove", true);
+    setDisabled("remoteReject", true);
 
-statusOwner("Controller disconnected. The code remains active.");
+    statusOwner("Controller disconnected. The code remains active.");
 
-} catch (error) {
-statusOwner("Disconnect failed: " + error.message);
+  } catch (error) {
+    statusOwner("Disconnect failed: " + error.message);
+  }
 }
+
+/* ---------- Controller: listen for approval ---------- */
+
+function listenForControllerApproval(code) {
+  detachControllerListener();
+
+  controllerCode = code;
+  controllerSessionRef = db.ref("sessions/" + code);
+
+  controllerSessionHandler = snapshot => {
+    const session = snapshot.val();
+
+    if (!session) {
+      statusJoin("The session no longer exists.");
+      show("remoteControllerPanel", false);
+      detachControllerListener();
+      return;
+    }
+
+    if (session.status === "ended") {
+      statusJoin("The owner has ended the session.");
+      show("remoteControllerPanel", false);
+      detachControllerListener();
+      return;
+    }
+
+    if (session.controllerUid === user.uid) {
+      statusJoin("Connected! You can now control the session.");
+      show("remoteControllerPanel", true);
+      return;
+    }
+
+    if (session.remoteAllowed !== true) {
+      statusJoin("Remote control is disabled.");
+      show("remoteControllerPanel", false);
+      return;
+    }
+
+    statusJoin("Request sent. Waiting for owner approval.");
+    show("remoteControllerPanel", false);
+  };
+
+  controllerSessionRef.on(
+    "value",
+    controllerSessionHandler,
+    error => {
+      console.error("CONTROLLER LISTENER ERROR:", error);
+
+      statusJoin(
+        "Could not monitor session: " + error.message
+      );
+
+      show("remoteControllerPanel", false);
+    }
+  );
 }
 
-/* ---------- UPDATED REQUEST JOIN FUNCTION ---------- */
+/* ---------- Controller: request to join ---------- */
 
 async function requestJoin() {
-  const code = el("remoteJoinCode").value.trim().toUpperCase();
+  const code = el("remoteJoinCode")
+    .value
+    .trim()
+    .toUpperCase();
 
   if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
-    setRemoteStatus("Enter a valid 8-character code.");
+    statusJoin("Enter a valid 8-character code.");
     return;
   }
 
   try {
     await remoteAuthSignIn();
 
-    const uid = auth.currentUser.uid;
-    const requestRef = db.ref(`joinRequests/${code}/${uid}`);
-    const sessionRef = db.ref(`sessions/${code}`);
+    const uid = user.uid;
 
-    // STEP 1: Create the join request
-    try {
-      await requestRef.set({
-        uid: uid,
-        createdAt: Date.now()
-      });
-      console.log("STEP 1 SUCCESS: Join request created.");
-    } catch (error) {
-      console.error("STEP 1 FAILED: Could not create join request.", error);
-      throw new Error("STEP 1: " + error.message);
-    }
+    const requestRef = db.ref(
+      "joinRequests/" + code + "/" + uid
+    );
 
-    // STEP 2: Read the session
-    let snapshot;
+    const sessionRef = db.ref(
+      "sessions/" + code
+    );
 
-    try {
-      snapshot = await sessionRef.once("value");
-      console.log("STEP 2 SUCCESS: Session read.", snapshot.val());
-    } catch (error) {
-      console.error("STEP 2 FAILED: Could not read session.", error);
-      throw new Error("STEP 2: " + error.message);
-    }
+    /* STEP 1: Create the join request. */
+
+    await requestRef.set({
+      uid: uid,
+      createdAt: Date.now()
+    });
+
+    console.log("STEP 1 SUCCESS: Join request created.");
+
+    /* STEP 2: Check that the session exists. */
+
+    const snapshot = await sessionRef.once("value");
+
+    console.log(
+      "STEP 2 SUCCESS: Session read.",
+      snapshot.val()
+    );
 
     if (!snapshot.exists()) {
+      await requestRef.remove();
       throw new Error("Session code does not exist.");
     }
 
     const session = snapshot.val();
 
     if (session.remoteAllowed !== true) {
+      await requestRef.remove();
       throw new Error("Remote control is disabled for this session.");
     }
 
-    setRemoteStatus("Request sent. Waiting for approval.");
+    /* STEP 3: Wait for the owner to approve. */
+
+    listenForControllerApproval(code);
+
+    statusJoin("Request sent. Waiting for owner approval.");
 
   } catch (error) {
     console.error("REQUEST JOIN ERROR:", error);
-    setRemoteStatus("Could not request access: " + error.message);
+
+    statusJoin(
+      "Could not request access: " + error.message
+    );
   }
 }
 
-/* ---------- END UPDATED FUNCTION ---------- */
+/* ---------- Controller: send commands ---------- */
 
 async function sendCommand(type) {
-if (!controllerCode || !user) return;
+  try {
+    await remoteAuthSignIn();
 
-try {
-const snap = await db.ref("sessions/" + controllerCode).get();
-const session = snap.val();
+    if (!controllerCode) {
+      statusJoin("Join a session first.");
+      return;
+    }
 
-if (!session || session.controllerUid !== user.uid ||
-!session.remoteAllowed || session.status === "ended") {
-statusJoin("You are no longer connected or authorized.");
-show("remoteControllerPanel", false);
-return;
+    const snap = await db.ref(
+      "sessions/" + controllerCode
+    ).get();
+
+    const session = snap.val();
+
+    if (
+      !session ||
+      session.controllerUid !== user.uid ||
+      !session.remoteAllowed ||
+      session.status === "ended"
+    ) {
+      statusJoin("You are no longer connected or authorized.");
+      show("remoteControllerPanel", false);
+      detachControllerListener();
+      return;
+    }
+
+    await db.ref(
+      "sessions/" + controllerCode + "/commands"
+    ).push({
+      type: type,
+      uid: user.uid,
+      createdAt: Date.now()
+    });
+
+    statusJoin("Sent: " + type + ".");
+
+  } catch (error) {
+    console.error("SEND COMMAND ERROR:", error);
+
+    statusJoin(
+      "Could not send command: " + error.message
+    );
+  }
 }
 
-await db.ref("sessions/" + controllerCode + "/commands").push({
-type,
-uid: user.uid,
-createdAt: Date.now()
-});
+/* ---------- Button listeners ---------- */
 
-statusJoin("Sent: " + type + ".");
+el("remoteCreate").addEventListener(
+  "click",
+  createOwnerSession
+);
 
-} catch (error) {
-statusJoin("Could not send command: " + error.message);
-}
-}
+el("remoteApprove").addEventListener(
+  "click",
+  approveRequest
+);
 
-el("remoteCreate").addEventListener("click", createOwnerSession);
-el("remoteApprove").addEventListener("click", approveRequest);
-el("remoteReject").addEventListener("click", rejectRequest);
-el("remoteDisconnect").addEventListener("click", disconnectController);
-el("remoteJoin").addEventListener("click", requestJoin);
+el("remoteReject").addEventListener(
+  "click",
+  rejectRequest
+);
 
-el("remoteControllerPause").addEventListener("click", () => sendCommand("pause"));
-el("remoteControllerResume").addEventListener("click", () => sendCommand("resume"));
+el("remoteDisconnect").addEventListener(
+  "click",
+  disconnectController
+);
+
+el("remoteJoin").addEventListener(
+  "click",
+  requestJoin
+);
+
+el("remoteControllerPause").addEventListener(
+  "click",
+  () => sendCommand("pause")
+);
+
+el("remoteControllerResume").addEventListener(
+  "click",
+  () => sendCommand("resume")
+);
 
 el("remoteControllerStop").addEventListener("click", () => {
-if (confirm("Stop the session on the owner device?")) sendCommand("stop");
+  if (confirm("Stop the session on the owner device?")) {
+    sendCommand("stop");
+  }
 });
 
-// Keep the database status in sync when the owner uses local controls.
+/* ---------- Keep Firebase status synchronized ---------- */
+
+// Owner ends session locally.
 el("stop").addEventListener("click", async () => {
-if (ownerRef) {
-try {
-await ownerRef.update({ status: "ended", controllerUid: null });
-} catch (error) {
-statusOwner("Could not update session status: " + error.message);
-}
-}
+  if (!ownerRef) return;
+
+  try {
+    await ownerRef.update({
+      status: "ended",
+      controllerUid: null
+    });
+  } catch (error) {
+    statusOwner(
+      "Could not update session status: " + error.message
+    );
+  }
 });
 
-// Reflect local pause/resume state to the controller's session status.
+// Owner pauses or resumes locally.
 el("pause").addEventListener("click", async () => {
-if (ownerRef) {
-try {
-await ownerRef.update({ status: paused ? "paused" : "connected" });
-} catch (error) {
-statusOwner("Could not update pause status: " + error.message);
-}
-}
+  if (!ownerRef) return;
+
+  try {
+    await ownerRef.update({
+      status: paused ? "paused" : "connected"
+    });
+  } catch (error) {
+    statusOwner(
+      "Could not update pause status: " + error.message
+    );
+  }
 });
 
-remoteAuthSignIn();
+/* ---------- Initial Firebase connection ---------- */
 
-async function remoteAuthSignIn() {
-try {
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+remoteAuthSignIn().catch(error => {
+  console.error(
+    "Initial Firebase connection failed:",
+    error
+  );
+});
 
-const auth = firebase.auth();
-const credential = await auth.signInAnonymously();
-
-user = credential.user;
-db = firebase.database();
-
-statusOwner("Connected to Firebase. Create a code when ready.");
-statusJoin("Connected to Firebase. Enter the owner's code.");
-
-} catch (error) {
-statusOwner("Firebase sign-in failed: " + error.message);
-statusJoin("Firebase sign-in failed: " + error.message);
-}
-}
+/* ---------- Cleanup ---------- */
 
 window.addEventListener("beforeunload", () => {
-detachOwnerListeners();
-detachControllerListener();
+  detachOwnerListeners();
+  detachControllerListener();
 });
 
 })();
 </script>
+
 
 </body>
 </html>
