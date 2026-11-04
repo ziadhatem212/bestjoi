@@ -439,8 +439,8 @@ const L=+$('level').value,boost=1+(L-3)*.05;
 return{t,label:LAB[kind],bpm:Math.round(R(b[0],b[1])*boost),dur:R(d[0],d[1])};
 }
 
-function block(){
-const k=weights(),L=+$('level').value,out=[];
+function block(forcedKind=null){
+const k=forcedKind||weights(),L=+$('level').value,out=[];
 
 if(S[k]){
 out.push(stroke(k));
@@ -482,6 +482,11 @@ return out;
 /* ---------- Session engine ---------- */
 let run=false,paused=false,t0=0,pausedAt=0,pausedTotal=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play';
 let forceOutcome=null;
+
+// Remote instruction and temporary ruin state
+let ruinActive=false;
+let ruinSnapshot=null;
+
 let mi=-1,mtimer=null;
 
 function elapsed(){return((paused?pausedAt:performance.now())-t0-pausedTotal)/1000;}
@@ -597,8 +602,13 @@ return;
 $('txt').textContent='Cum in '+Math.max(1,Math.ceil(rem));
 }
 if(e>=curEnd){
-if(queue.length)go(queue.shift());
-else finish();
+  if(queue.length){
+    go(queue.shift());
+  }else if(ruinActive){
+    restoreAfterRuin();
+  }else{
+    finish();
+  }
 }
 }
 }
@@ -1355,7 +1365,18 @@ window.addEventListener("beforeunload", () => {
 "use strict";
 const $=id=>document.getElementById(id);
 const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
-const OK=new Set(["mediaPrev","mediaNext","mediaSet","speedUp","speedDown","ruin","countdown","cancelCountdown"]);
+const OK=new Set([
+  "mediaPrev",
+  "mediaNext",
+  "mediaSet",
+  "speedUp",
+  "speedDown",
+  "ruin",
+  "cancelRuin",
+  "instruction",
+  "countdown",
+  "cancelCountdown"
+]);
 let db=null,me=null;
 const ready=new Promise(res=>{
   const t=setInterval(()=>{
@@ -1493,14 +1514,66 @@ async function startRtc(){
 }
 
 function doRuin(){
-  if(!run||paused)return;
-  const END=/^(CUM NOW|Slow down\. Gentle|Stop\. Hands off\. No orgasm|Cum now, then)/;
-  if(phase==="play"){forceOutcome="ruin";finale();}
-  else if(phase==="final"){
-    if(cur&&END.test(cur.t))return;
-    queue=queue.filter(s=>!END.test(s.t));
-    queue.push({t:"Cum now, then hands off the second it starts. Let it run out. Ruined.",bpm:0,dur:15});
+  if(!run || paused || ruinActive) return;
+
+  // Save the session exactly where it currently is.
+  ruinSnapshot = {
+    phase,
+    queue: queue.map(s => ({...s})),
+    cur: cur ? {...cur} : null,
+    curStart,
+    curEnd,
+    planEnd,
+    extends_,
+    forceOutcome,
+    elapsedAt: elapsed()
+  };
+
+  ruinActive = true;
+  forceOutcome = "ruin";
+
+  // Trigger the temporary ruin sequence.
+  finale();
+
+  pubState();
+}
+
+function restoreAfterRuin(){
+  if(!ruinActive || !ruinSnapshot) return;
+
+  const saved = ruinSnapshot;
+
+  // Account for the time spent in the temporary sequence.
+  const shift = Math.max(0, elapsed() - saved.elapsedAt);
+
+  phase = saved.phase;
+  queue = saved.queue.map(s => ({...s}));
+  cur = saved.cur ? {...saved.cur} : null;
+
+  curStart = saved.curStart + shift;
+  curEnd = saved.curEnd + shift;
+  planEnd = saved.planEnd + shift;
+
+  extends_ = saved.extends_;
+  forceOutcome = saved.forceOutcome;
+
+  ruinActive = false;
+  ruinSnapshot = null;
+
+  // Restore the interrupted instruction.
+  if(cur){
+    say(cur.t);
+    setBpm(cur.bpm || 0);
   }
+
+  updateNext();
+  pubState();
+}
+
+function cancelRuin(){
+  if(!ruinActive) return;
+
+  restoreAfterRuin();
 }
 function applyCmd(c){
   if(!OK.has(c.type))return;
@@ -1516,6 +1589,21 @@ function applyCmd(c){
   else if(c.type==="speedUp"){if(run)adj(.1);}
   else if(c.type==="speedDown"){if(run)adj(-.1);}
   else if(c.type==="ruin")doRuin();
+   else if(c.type==="cancelRuin"){
+  cancelRuin();
+}
+else if(c.type==="instruction"){
+  const allowed = [
+    "crawl","slow","mid","fast","vfast","fuck",
+    "ramp","wave","edge","handsoff","squeeze","balls","stomach"
+  ];
+
+  if(allowed.includes(c.instruction) && run && !paused && phase==="play"){
+    queue = block(c.instruction);
+    curEnd = elapsed();
+    updateNext();
+  }
+}
   else if(c.type==="countdown"){
     const m=c.minutes;
     if(typeof m==="number"&&isFinite(m)&&m>=.1&&m<=180){cdEnd=Date.now()+m*60000;cdHide=0;}
@@ -1572,25 +1660,87 @@ const panel=$("remoteControllerPanel");
 function buildUI(){
   if(cBuilt)return;cBuilt=true;
   const w=document.createElement("div");
-  w.innerHTML=`<div class="rc-prev"><video id="rcVideo" autoplay playsinline muted></video><div id="rcLive" class="rc-st">Preview: waiting for owner...</div></div>
-<div class="row"><button class="chip" id="rcPrev">◀ Previous picture</button><button class="chip" id="rcNext">Next picture ▶</button></div>
+  w.innerHTML=`
+<div class="rc-prev">
+  <video id="rcVideo" autoplay playsinline muted></video>
+  <div id="rcLive" class="rc-st">Preview: waiting for owner...</div>
+</div>
+
+<h2>Pictures</h2>
+<div class="row">
+  <button class="chip" id="rcPrev">◀ Previous picture</button>
+  <button class="chip" id="rcNext">Next picture ▶</button>
+</div>
 <div id="rcThumbs" class="chips" style="justify-content:flex-start"></div>
-<div class="row"><button class="chip" id="rcSlow">Slower −10%</button><strong id="rcSpeed">100%</strong><button class="chip" id="rcFast">Faster +10%</button></div>
-<div class="row"><button class="chip" id="rcRuin" style="background:var(--hot);border-color:var(--hot);color:#fff">Ruin</button><span id="rcPhase" class="note" style="margin:0"></span></div>
-<div class="row"><input id="rcMin" type="number" min="0.1" max="180" step="0.5" value="5" style="width:80px;background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px"><span class="sm">minutes</span>
-<button class="chip" id="rcCdGo">Start countdown</button><button class="ghost" id="rcCdStop">Cancel countdown</button></div><div id="rcCdInfo" class="note"></div>`;
+
+<h2>Speed</h2>
+<div class="row">
+  <button class="chip" id="rcSlow">Slower −10%</button>
+  <strong id="rcSpeed">100%</strong>
+  <button class="chip" id="rcFast">Faster +10%</button>
+</div>
+
+<h2>Temporary Ruin</h2>
+<div class="row">
+  <button class="chip" id="rcRuin">Trigger Ruin</button>
+  <button class="ghost" id="rcCancelRuin">Cancel Ruin</button>
+</div>
+
+<h2>Instruction control</h2>
+<div class="row">
+  <select id="rcInstruction" style="flex:1;min-width:180px">
+    <option value="crawl">Crawl speed</option>
+    <option value="slow">Slow strokes</option>
+    <option value="mid">Steady strokes</option>
+    <option value="fast">Fast strokes</option>
+    <option value="vfast">Max speed</option>
+    <option value="fuck">Alternative movement</option>
+    <option value="ramp">Ramp up</option>
+    <option value="wave">Waves</option>
+    <option value="edge">Edge sequence</option>
+    <option value="handsoff">Hands-off sequence</option>
+    <option value="squeeze">Hold sequence</option>
+    <option value="balls">Ball sequence</option>
+    <option value="stomach">Stomach sequence</option>
+  </select>
+  <button class="chip" id="rcSetInstruction">Set instruction</button>
+</div>
+<div id="rcPhase" class="note"></div>
+
+<h2>Countdown</h2>
+<div class="row">
+  <input id="rcMin" type="number" min="0.1" max="180"
+    step="0.5" value="5"
+    style="width:80px;background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px">
+  <span class="sm">minutes</span>
+  <button class="chip" id="rcCdGo">Start countdown</button>
+  <button class="ghost" id="rcCdStop">Cancel countdown</button>
+</div>
+<div id="rcCdInfo" class="note"></div>
+`;
   panel.prepend(w);
   $("rcPrev").onclick=()=>send("mediaPrev");
   $("rcNext").onclick=()=>send("mediaNext");
   $("rcSlow").onclick=()=>send("speedDown");
   $("rcFast").onclick=()=>send("speedUp");
-  $("rcRuin").onclick=()=>{if(confirm("Trigger Ruin on the owner device?"))send("ruin");};
+$("rcRuin").onclick=()=>{
+  send("ruin");
+};
   $("rcCdGo").onclick=()=>{
     const m=parseFloat($("rcMin").value);
     if(!(m>=.1&&m<=180)){setLive("Countdown must be 0.1 to 180 minutes.");return;}
     send("countdown",{minutes:m});
   };
   $("rcCdStop").onclick=()=>send("cancelCountdown");
+ $("rcCancelRuin").onclick=()=>{
+  send("cancelRuin");
+};
+
+$("rcSetInstruction").onclick=()=>{
+  send("instruction",{
+    instruction:$("rcInstruction").value
+  });
+};
 }
 async function send(type,extra){
   if(!cCode||!db)return;
