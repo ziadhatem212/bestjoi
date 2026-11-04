@@ -64,7 +64,27 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 <div class="chips" id="presets"></div>
 </div>
 </section>
+  
+<section>
+  <h2>Random Breaks</h2>
 
+  <div class="row">
+    <label>Enable random breaks</label>
+    <button class="chip" id="randomBreakToggle">Off</button>
+  </div>
+
+  <div class="row">
+    <label>Number of breaks</label>
+    <input type="range" id="randomBreakCount" min="1" max="5" value="2">
+    <span id="randomBreakCountValue">2</span>
+  </div>
+
+  <p class="note">
+    Breaks are scheduled randomly throughout the session.
+    The session pauses when a break occurs and waits for you to resume.
+  </p>
+</section>
+  
 <section>
 <h2>Style</h2>
 <div class="grid" id="styles"></div>
@@ -203,6 +223,27 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 </div>
 </div>
 
+<div id="randomBreakOverlay" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:10;
+  background:rgba(13,7,16,.97);
+  color:#f1e7ec;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  text-align:center;
+  padding:25px;
+  font-family:system-ui;
+">
+  <h1>Random Break</h1>
+  <p>The session is paused.</p>
+  <button class="big" id="resumeRandomBreak" style="max-width:300px">
+    Resume Session
+  </button>
+</div>
+
 <div id="panic">Notes<br><br>Tap anywhere to come back.</div>
 
 <script>
@@ -211,6 +252,69 @@ const R=(a,b)=>a+Math.random()*(b-a), RI=(a,b)=>Math.floor(R(a,b+1)), PICK=a=>a[
 
 /* ---------- Setup UI ---------- */
 let minutes=30;
+  /* ---------- Random Break Configuration ---------- */
+
+let randomBreaksEnabled = false;
+let randomBreakTimes = [];
+let randomBreakIndex = 0;
+let randomBreakActive = false;
+
+$('randomBreakToggle').onclick = e => {
+  randomBreaksEnabled = !randomBreaksEnabled;
+
+  e.target.textContent = randomBreaksEnabled ? 'On' : 'Off';
+  e.target.classList.toggle('on', randomBreaksEnabled);
+};
+
+$('randomBreakCount').oninput = e => {
+  $('randomBreakCountValue').textContent = e.target.value;
+};
+
+function scheduleRandomBreaks() {
+  randomBreakTimes = [];
+  randomBreakIndex = 0;
+
+  if (!randomBreaksEnabled) return;
+
+  const count = +$('randomBreakCount').value;
+
+  // Keep breaks away from the very beginning and end.
+  const earliest = planEnd * 0.10;
+  const latest = planEnd * 0.90;
+
+  const available = latest - earliest;
+
+  for (let i = 0; i < count; i++) {
+    randomBreakTimes.push(
+      earliest + Math.random() * available
+    );
+  }
+
+  randomBreakTimes.sort((a, b) => a - b);
+}
+
+function triggerRandomBreak() {
+  if (!run || paused || randomBreakActive) return;
+
+  randomBreakActive = true;
+
+  // Pause using the existing pause control.
+  $('pause').click();
+
+  $('randomBreakOverlay').style.display = 'flex';
+}
+
+$('resumeRandomBreak').onclick = () => {
+  if (!randomBreakActive) return;
+
+  $('randomBreakOverlay').style.display = 'none';
+
+  randomBreakActive = false;
+
+  if (run && paused) {
+    $('pause').click();
+  }
+};
 const MINS=[5,10,15,25,30,45,60,90,120,150,180];
 const svg=$('dial'),knob=$('knob'),arc=$('arc');
 
@@ -552,7 +656,9 @@ pausedTotal=0;
 extends_=0;
 phase='play';
 planEnd=endPlan();
-
+scheduleRandomBreaks();
+randomBreakActive = false;
+$('randomBreakOverlay').style.display = 'none';
 queue=[];
 nextT=ac.currentTime+.1;
 beatN=0;
@@ -575,6 +681,16 @@ catch(err){alert('Could not start: '+err.message);}
 function loop(){
 if(!run||paused)return;
 const e=elapsed();
+  // Check whether the next random break is due.
+if (
+  randomBreaksEnabled &&
+  randomBreakIndex < randomBreakTimes.length &&
+  e >= randomBreakTimes[randomBreakIndex]
+) {
+  randomBreakIndex++;
+  triggerRandomBreak();
+  return;
+}
 const f=1-Math.exp(-3*Math.min(e,planEnd*1.3)/(minutes*60));
 $('heatf').style.width=Math.max(0,Math.min(97,f*98.5+Math.sin(e/9)*1.5))+'%';
 
@@ -682,15 +798,26 @@ setBpm(cur?cur.bpm||0:0);
 }
 };
 
-$('stop').onclick=()=>{
-run=false;
-clearInterval(tick);
-clearInterval(mtimer);
-setBpm(0);
-if('speechSynthesis'in window)speechSynthesis.cancel();
-$('run').style.display='none';
-$('setup').classList.remove('hide');
-$('stage').querySelectorAll('img,video').forEach(n=>n.remove());
+$('stop').onclick = () => {
+  run = false;
+  clearInterval(tick);
+  clearInterval(mtimer);
+  setBpm(0);
+
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+
+  $('run').style.display = 'none';
+  $('setup').classList.remove('hide');
+  $('stage').querySelectorAll('img,video').forEach(n => n.remove());
+
+  // Reset random breaks
+  randomBreakTimes = [];
+  randomBreakIndex = 0;
+  randomBreakActive = false;
+
+  clearTimeout(randomBreakTimeout);
+
+  $('randomBreakOverlay').style.display = 'none';
 };
 
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
