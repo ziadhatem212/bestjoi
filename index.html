@@ -6,7 +6,7 @@
 :root{--bg:#190e1d;--panel:#26162b;--ink:#f1e7ec;--mute:#a995b0;--hot:#ff3d81;--warm:#ffb347;--line:#3b2744}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;min-height:100vh}
-h1,h2,button,label,select,input,.sm{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+h1,h2,button,label,select,.sm{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
 main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
 h1{font-size:28px;margin:8px 0 2px}
 .sub{color:var(--mute);margin:0 0 20px}
@@ -22,7 +22,7 @@ h2{font-size:15px;margin:0 0 12px;color:var(--warm);font-weight:600}
 .row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
 .row label{min-width:120px;color:var(--mute);font-size:14px}
 input[type=range]{flex:1;min-width:140px;accent-color:var(--hot)}
-select,input[type=file],input[type=text],input[type=number]{background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px}
+select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px}
 .big{width:100%;background:var(--hot);color:#fff;border:0;border-radius:12px;padding:16px;font-size:18px;font-weight:600;cursor:pointer}
 .ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:14px}
 #run{display:none;position:fixed;inset:0;background:var(--bg);z-index:5;flex-direction:column}
@@ -36,13 +36,12 @@ select,input[type=file],input[type=text],input[type=number]{background:#1d1122;c
 #bar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;justify-content:center}
 #heat{flex:1;min-width:160px;height:10px;background:#1d1122;border-radius:6px;overflow:hidden}
 #heatf{height:100%;width:0;background:linear-gradient(90deg,var(--warm),var(--hot));transition:width 2s linear}
-#beat{width:16px;height:16px;border-radius:50%;background:var(--hot);opacity:.25;transition:all .08s}
+#beat{width:16px;height:16px;border-radius:50%;background:var(--hot);opacity:.25}
 #beat.p{opacity:1;transform:scale(1.35)}
+#beat{transition:all .08s}
 #panic{position:fixed;inset:0;background:#fff;z-index:9;display:none;color:#222;font:18px system-ui;padding:40px}
-#remote{position:fixed;inset:0;background:var(--bg);z-index:6;overflow:auto;padding:16px;max-width:760px;margin:0 auto}
 .hide{display:none!important}
 .note{font:13px system-ui;color:var(--mute);margin:8px 0 0}
-#code{font-size:26px;letter-spacing:3px}
 </style></head><body>
 <main id="setup">
 <h1>Session</h1>
@@ -61,8 +60,8 @@ select,input[type=file],input[type=text],input[type=number]{background:#1d1122;c
 <p class="note">Tap more than one to mix them. Nothing selected = mixed.</p></section>
 
 <section><h2>Level</h2>
-<div class="row"><label>Intensity</label><input type="range" id="level" min="1" max="6" value="3"><span id="lvlname" class="sm"></span></div>
-<p class="note">Low: mostly permission, gentle pacing. Middle: more edging and surprise events. High: constant speed shifts, sudden stops, early endings, fake-outs. Very Hard: relentless, nearly no rest, and the ending can come at any time.</p></section>
+<div class="row"><label>Intensity</label><input type="range" id="level" min="1" max="5" value="3"><span id="lvlname" class="sm"></span></div>
+<p class="note">Low: mostly permission to finish near the end. High: more edging, longer holds, and a real chance you get ruined, denied, or extended.</p></section>
 
 <section><h2>Tasks allowed</h2><div class="grid" id="tasks"></div></section>
 
@@ -76,21 +75,44 @@ select,input[type=file],input[type=text],input[type=number]{background:#1d1122;c
 <div class="row"><label>Change speed myself</label><button class="chip" id="speedctl">Off</button></div>
 <div class="row"><label>Show what's next</label><button class="chip on" id="shownext">On</button></div>
 <p class="note">When speed control is allowed, Faster and Slower buttons appear during the session and change every pace by 10% a tap.</p></section>
-
-<section><h2>Remote control</h2>
-<div class="row"><label>Your code</label><b id="code">...</b></div>
-<p class="note" id="rstat">Connecting...</p>
-<div class="row"><label>Remote allowed</label><button class="chip on" id="ralw">Allowed</button><button class="ghost" id="rkick">Disconnect + new code</button></div>
-<div class="row"><label>Remote picks the ending</label><button class="chip" id="rendm">Off</button></div>
-<p class="note">Share your code. Someone who enters it can change speed, trigger events and send orders. You can always pause, end, or disconnect them.</p>
-<div class="row"><label>Join someone else</label><input type="text" id="jcode" placeholder="CODE" maxlength="9" size="10"><button class="ghost" id="jbtn">Join</button></div>
-<p class="note" id="jerr"></p></section>
-
 <section><h2>Pictures and videos</h2>
 <div class="row"><input type="file" id="files" accept="image/*,video/*" multiple></div>
 <div class="row"><label>Shuffle every</label><input type="range" id="shuf" min="3" max="30" value="8"><span id="shufv" class="sm">8s</span></div>
 <div class="row"><label>Video sound</label><button class="chip" id="vsound">Muted</button></div>
 <p class="note" id="count">No media yet. Files stay on your device.</p></section>
+
+
+<section id="remotePanel">
+  <h2>Remote control</h2>
+  <p class="note">Create a session code here, then approve the other device before it can control this session.</p>
+  <div class="row">
+    <button class="chip on" id="remoteCreate">Create code</button>
+    <strong id="remoteOwnerCode">--------</strong>
+  </div>
+  <p class="note" id="remoteOwnerStatus">Remote control is not connected.</p>
+  <div class="row">
+    <span id="remoteRequestStatus">No pending request.</span>
+    <button class="ghost" id="remoteApprove" disabled>Approve</button>
+    <button class="ghost" id="remoteReject" disabled>Reject</button>
+  </div>
+  <div class="row">
+    <button class="ghost" id="remoteDisconnect" disabled>Disconnect controller</button>
+  </div>
+  <hr style="border-color:var(--line);margin:16px 0">
+  <h2>Join from another device</h2>
+  <div class="row">
+    <input id="remoteJoinCode" maxlength="8" autocomplete="off" placeholder="8-character code">
+    <button class="chip" id="remoteJoin">Request access</button>
+  </div>
+  <p class="note" id="remoteJoinStatus">Enter the code shown on the owner device.</p>
+  <div id="remoteControllerPanel" class="hide">
+    <div class="row">
+      <button class="chip" id="remoteControllerPause">Pause</button>
+      <button class="chip" id="remoteControllerResume">Resume</button>
+      <button class="ghost" id="remoteControllerStop">Stop session</button>
+    </div>
+  </div>
+</section>
 
 <button class="big" id="start">Start</button>
 </main>
@@ -98,7 +120,7 @@ select,input[type=file],input[type=text],input[type=number]{background:#1d1122;c
 <div id="run">
 <div id="stage"><div id="empty">No media loaded</div>
 <div id="cap"><p id="txt"></p><div id="bpm"></div><div id="next"></div></div></div>
-<div id="bar"><div id="beat"></div><div id="heat"><div id="heatf"></div></div><span class="sm note" id="badge"></span>
+<div id="bar"><div id="beat"></div><div id="heat"><div id="heatf"></div></div>
 <button class="ghost hide" id="slower">Slower</button><button class="ghost hide" id="faster">Faster</button>
 <button class="ghost" id="edge">I'm at the edge</button>
 <button class="ghost" id="pause">Pause</button>
@@ -107,24 +129,9 @@ select,input[type=file],input[type=text],input[type=number]{background:#1d1122;c
 <button class="ghost" id="stop">End</button></div></div>
 <div id="panic">Notes<br><br>Tap anywhere to come back.</div>
 
-<div id="remote" class="hide">
-<h1>Remote</h1><p class="note" id="rs">Connecting...</p>
-<section><h2>Now</h2><p id="rtxt"></p><p class="sm note" id="rinfo"></p></section>
-<section><h2>Speed</h2><div class="row"><input type="range" id="rsp" min="0.4" max="2" step="0.05" value="1"><span id="rspv" class="sm">100%</span></div>
-<div class="grid"><button class="chip" id="rpause">Pause</button><button class="chip" id="rskip">Next instruction</button></div>
-<p class="note">The owner can always resume or end on their side.</p></section>
-<section><h2>Events</h2><div class="grid" id="revs"></div></section>
-<section><h2>Ending</h2><div class="grid" id="rfin"></div><p class="note" id="rnote"></p></section>
-<section><h2>Send an order</h2><input type="text" id="ot" placeholder="Instruction" maxlength="160" style="width:100%">
-<div class="row"><label>Strokes/min</label><input type="number" id="ob" value="0" min="0" max="260"><label>Seconds</label><input type="number" id="od" value="20" min="3" max="300"></div>
-<button class="big" id="osend">Send</button></section>
-<div class="grid"><button class="ghost" id="rstop">End their session</button><button class="ghost" id="rleave">Leave</button></div>
-</div>
-
 <script>
 const $=id=>document.getElementById(id);
 const R=(a,b)=>a+Math.random()*(b-a), RI=(a,b)=>Math.floor(R(a,b+1)), PICK=a=>a[Math.floor(Math.random()*a.length)];
-const CL=(v,a,b)=>Math.max(a,Math.min(b,+v||0)), lv=()=>+$('level').value;
 
 /* ---------- Setup UI ---------- */
 let minutes=30;
@@ -151,16 +158,17 @@ const styleSel=new Set(),taskSel=new Set(['ruin','balls','hands','squeeze','stom
 function toggles(id,list,set){list.forEach(([k,l])=>{const b=document.createElement('button');b.className='opt'+(set.has(k)?' on':'');b.textContent=l;
  b.onclick=()=>{set.has(k)?set.delete(k):set.add(k);b.classList.toggle('on')};$(id).appendChild(b)})}
 toggles('styles',STYLES,styleSel);toggles('tasks',TASKS,taskSel);
-const LV=['Gentle','Easy','Medium','Hard','Brutal','Very Hard'];
-$('level').oninput=()=>$('lvlname').textContent=LV[lv()-1];$('level').oninput();
+const LV=['Gentle','Easy','Medium','Hard','Brutal'];
+$('level').oninput=()=>$('lvlname').textContent=LV[$('level').value-1];$('level').oninput();
 
 let metroOn=true,voiceOn=false,vMuted=true;
-const flip=(id,get,set,a,b)=>$(id).onclick=e=>{set(!get());e.target.textContent=get()?a:b;e.target.classList.toggle('on',get())};
-flip('metro',()=>metroOn,v=>metroOn=v,'On','Off');flip('voice',()=>voiceOn,v=>voiceOn=v,'On','Off');
+$('metro').onclick=e=>{metroOn=!metroOn;e.target.textContent=metroOn?'On':'Off';e.target.classList.toggle('on',metroOn)};
+$('voice').onclick=e=>{voiceOn=!voiceOn;e.target.textContent=voiceOn?'On':'Off';e.target.classList.toggle('on',voiceOn)};
 $('vsound').onclick=e=>{vMuted=!vMuted;e.target.textContent=vMuted?'Muted':'With sound';e.target.classList.toggle('on',!vMuted)};
 function loadVoices(){const v=speechSynthesis.getVoices();$('voicesel').innerHTML=v.map((x,i)=>`<option value="${i}">${x.name} (${x.lang})</option>`).join('')}
 if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
 $('shuf').oninput=()=>$('shufv').textContent=$('shuf').value+'s';
+
 let media=[];
 $('files').onchange=e=>{media=[...e.target.files].map(f=>({url:URL.createObjectURL(f),video:f.type.startsWith('video')}));
  $('count').textContent=media.length+' file(s) loaded. Files stay on your device.'};
@@ -178,160 +186,103 @@ function setBpm(v){baseBpm=v;bpm=v?Math.max(15,Math.round(v*speedMult)):0;
  const pc=Math.round((speedMult-1)*100);
  $('bpm').textContent=bpm?bpm+' strokes a minute'+(pc?' ('+(pc>0?'+':'')+pc+'%)':''):'';
  if(bpm&&ac&&nextT<ac.currentTime)nextT=ac.currentTime+.05}
-function adj(d){speedMult=CL(+(speedMult+d).toFixed(2),.4,2);setBpm(baseBpm);push()}
+function adj(d){speedMult=Math.max(.4,Math.min(2,+(speedMult+d).toFixed(2)));setBpm(baseBpm)}
 $('faster').onclick=()=>adj(.1);$('slower').onclick=()=>adj(-.1);
 $('speedctl').onclick=e=>{speedCtl=!speedCtl;e.target.textContent=speedCtl?'Allowed':'Off';e.target.classList.toggle('on',speedCtl)};
 $('shownext').onclick=e=>{showNxt=!showNxt;e.target.textContent=showNxt?'On':'Off';e.target.classList.toggle('on',showNxt)};
 
-/* ---------- Instruction content: [text, bpm range, seconds range, min level] ---------- */
-const S={
-crawl:[["Crawl. As slow as you can go. Almost not moving.",[18,32],[25,50]],["Painfully slow. Count every single stroke.",[20,35],[25,45]],["One finger and thumb. Slide so slowly it's almost cruel.",[15,28],[30,60],2],["Slower than a breath. Feel everything and chase nothing.",[18,30],[30,60],3]],
-slow:[["Slow, full strokes. Tip to base. Don't you dare rush.",[40,60],[40,80]],["Slow motion. Feel every inch of it.",[35,55],[40,70]],["Only your fingertips, only the head. Barely touching.",[30,50],[30,60]],["Slow and tight. Twist at the head on every stroke.",[40,60],[40,70],2],["Lazy strokes. Pretend you've got all night. You don't.",[35,55],[40,80]],["Squeeze the head on every upstroke. Slowly.",[35,50],[35,60],3]],
-tease:[["Light touches only. Run your fingertips up the underside. Nothing more.",[25,45],[30,60]],["Trace slow circles around the head. Don't grip. Not yet.",[20,40],[30,60]],["Tease your balls and the base. Stay away from the head.",[20,35],[30,50],2],["Two fingers, ghost-light, up and down the shaft. Beg me for more in your head.",[25,40],[30,55],3]],
-mid:[["Steady grip. Steady rhythm. Match the beat.",[80,105],[40,80]],["Make a ring with your thumb and middle finger. Work it.",[85,110],[30,70]],["Squeeze your hand from tip to base. Don't half-ass it.",[70,95],[40,70]],["Loose grip, steady pace. Add a twist every fourth stroke.",[80,105],[40,80],2],["Two fingers and a thumb. Short strokes on the head.",[90,115],[30,60],3]],
-fast:[["Faster. Don't stop. Don't slow down.",[130,175],[25,50]],["Rough and fast. Tight grip. Take it.",[140,180],[20,45]],["Sprint. Keep up with the beat.",[150,190],[15,35]],["Fast and sloppy. Spit on it. Don't slow down.",[140,180],[20,40],2],["Tight fist, full length, no mercy. Keep up.",[150,190],[25,45],3]],
-vfast:[["As fast as you can. Don't you dare stop.",[190,230],[12,25]],["Max speed. Go, go, go.",[200,240],[10,20]],["Your hand should be a blur. Hold it there.",[210,250],[10,20],4]],
-fuck:[["Make a fist and keep your hand still. Only your hips move. Fuck it.",[75,110],[40,90]],["Hands under your ass. Hips only. Fuck the air.",[70,100],[30,60]],["Both hands as a tight tunnel. Thrust into it. Deeper.",[80,115],[35,70],3]],
-brutal:[["Fastest you can manage, then faster. Your arm will burn. Don't you stop.",[230,270],[15,30],5],["Hard, tight, fast. No slowing for any reason. You're close and you stay close.",[200,250],[20,40],5],["Only the head, fast, tight grip. It's too sensitive and you keep going.",[180,230],[15,30],6],["Fast. You stop when I say and not before. Don't ask when.",[210,260],[20,40],6]]};
-const LAB={slow:'Slow strokes',mid:'Steady strokes',fast:'Fast strokes',fuck:'Fuck your fist',crawl:'Crawl speed',vfast:'Max speed',tease:'Teasing touch',brutal:'No mercy'};
+/* ---------- Instruction content ---------- */
+const S={ // [text, bpm range, seconds range]
+crawl:[["Crawl. As slow as you can go. Almost not moving.",[18,32],[25,50]],["Painfully slow. Count every single stroke.",[20,35],[25,45]]],
+slow:[["Slow, full strokes. Tip to base. Don't you dare rush.",[40,60],[40,80]],["Slow motion. Feel every inch of it.",[35,55],[40,70]],["Only your fingertips, only the head. Barely touching.",[30,50],[30,60]]],
+mid:[["Steady grip. Steady rhythm. Match the beat.",[80,105],[40,80]],["Make a ring with your thumb and middle finger. Work it.",[85,110],[30,70]],["Squeeze your hand from tip to base. Don't half-ass it.",[70,95],[40,70]]],
+fast:[["Faster. Don't stop. Don't slow down.",[130,175],[25,50]],["Rough and fast. Tight grip. Take it.",[140,180],[20,45]],["Sprint. Keep up with the beat.",[150,190],[15,35]]],
+vfast:[["As fast as you can. Don't you dare stop.",[190,230],[12,25]],["Max speed. Go, go, go.",[200,240],[10,20]]],
+fuck:[["Make a fist and keep your hand still. Only your hips move. Fuck it.",[75,110],[40,90]],["Hands under your ass. Hips only. Fuck the air.",[70,100],[30,60]]]};
+const LAB={slow:'Slow strokes',mid:'Steady strokes',fast:'Fast strokes',fuck:'Fuck your fist',crawl:'Crawl speed',vfast:'Max speed'};
 const LINES={
 open:["Get comfortable. Put your cock in your hand. We start slow, and you do exactly what I say.","Breathe in. Hand around your cock. Don't move yet. Wait for it."],
 hands:["Let go. Hands in the air. Your cock can throb on its own.","Hands off. Sit on them. Breathe."],
 nearly:["You're not allowed to cum yet. Breathe.","Good. That's how close I want you.","Feel that ache? Hold on to it."]};
-const PHT=k=>PICK({stop:["STOP. Freeze. Don't move.","Hands off. Right now."],fast:["Fast! Go!","Now speed up. Hard."],vfast:["As fast as you can!","Blur. Go."],slow:["Slow. Right down.","Easy now. Slow."],crawl:["Almost nothing. Crawl.","Barely moving."],mid:["Steady. Match the beat.","Medium. Hold it there."]}[k]);
-const BR={fast:[130,180],vfast:[190,250],slow:[35,60],crawl:[18,32],mid:[80,105],stop:[0,0]};
-const PD=[[12,20],[12,20],[10,18],[6,12],[4,9],[2,6]];       // phase length by level
-const CW=[0,0,.8,1.8,3,4.5];                                 // weight of speed-shift blocks by level
-const GAP=[[240,420],[200,360],[150,280],[100,200],[70,150],[45,110]]; // seconds between random events
 
 function weights(){
- const o=[],L=lv(),sel=styleSel.size?styleSel:new Set(['tease','edge','slow','fast','fuck']);
+ const o=[],L=+$('level').value,sel=styleSel.size?styleSel:new Set(['tease','edge','slow','fast','fuck']);
  if(sel.has('slow')){o.push(['slow',3]);o.push(['crawl',1.2])}
- if(sel.has('tease'))o.push(['tease',2]);
  o.push(['mid',2]);o.push(['ramp',1.3]);o.push(['wave',1.3]);
- if(CW[L-1])o.push(['chaos',CW[L-1]]);
  if(sel.has('fast')){o.push(['fast',2+L*.5]);o.push(['vfast',.6+L*.3])}
- if(L>=5)o.push(['brutal',L-3]);
  if(sel.has('fuck'))o.push(['fuck',2]);
  if(sel.has('edge')||sel.has('tease'))o.push(['edge',2+L*.7]);
- if(sel.has('tease')&&taskSel.has('hands'))o.push(['handsoff',Math.max(.4,1.5+L*.4-(L>=5?3:0))]);
+ if(sel.has('tease')&&taskSel.has('hands'))o.push(['handsoff',1.5+L*.4]);
  if(taskSel.has('squeeze'))o.push(['squeeze',1+L*.3]);
  if(taskSel.has('balls'))o.push(['balls',1.2+L*.2]);
  if(taskSel.has('stomach'))o.push(['stomach',1]);
  const tot=o.reduce((a,x)=>a+x[1],0);let r=Math.random()*tot;for(const[k,w]of o){if((r-=w)<=0)return k}return 'mid'}
 
-function stroke(kind){const L=lv(),pool=S[kind].filter(x=>(x[3]||1)<=L),[t,b,d]=PICK(pool.length?pool:S[kind]),boost=1+(L-3)*.05;
- return{t,label:LAB[kind],bpm:Math.round(R(b[0],b[1])*boost),dur:R(d[0],d[1])*(L>=5?.85:1)}}
-function chaos(){const L=lv(),n=RI(5,9),ph=[],pd=PD[L-1],ks=['fast','stop','slow','fast','crawl','mid','stop'].concat(L>=4?['vfast']:[]);let last='',tot=0;
- for(let i=0;i<n;i++){let k;do k=PICK(ks);while(k===last);last=k;
-  const d=R(pd[0],pd[1]),b=k==='stop'?0:Math.round(R(...BR[k])*(1+(L-3)*.05));
-  ph.push({k,b,d,g:k==='stop'||Math.random()<.5?0:R(.8,2)});tot+=d}
- return{t:'',label:'Speed shifts',phases:ph,dur:tot,bpm:ph[0].b}}
-const holdS=(L)=>({t:"STOP. Hands off. Don't touch it.",label:'Short hold, hands off',bpm:0,dur:R(4+L,8+L*3)});
-const breathe=()=>({t:PICK(LINES.nearly),label:'Breathe',bpm:0,dur:R(3,7)});
-function edgeSteps(){const L=lv(),o=[stroke('mid'),
- {t:PICK(["Now take yourself to the edge. Fast. Press the button when you're there.","Go to the edge. Don't fall off. Press the button the moment you get close."]),label:'Edge run',bpm:RI(130,170),dur:R(35,75),edgeWait:true},holdS(L)];
- if(L>=5&&Math.random()<.6)o.push({t:"Again. Straight back to the edge. No rest.",label:'Edge again',bpm:RI(160,200),dur:R(20,40),edgeWait:true},holdS(L));
- return o.concat(L>=5?[]:[breathe()])}
-const B={
-squeeze:()=>{const L=lv();return[{t:"Squeeze the base. Hard. Hold it there.",label:'Squeeze and hold',bpm:0,dur:R(5,8+L*2)},{t:"Let go slowly. Breathe. Stay on the edge.",label:'Release',bpm:0,dur:R(4,8)}]},
-balls:()=>{const L=lv(),n=RI(5,10+L*3);return[{t:`Slap your balls. Open hand, ${n} times. Count them out loud.`,label:'Ball slaps',bpm:RI(70,90),dur:n*(60/80)+6},{t:"Now back to stroking. Slow.",label:'Slow strokes',bpm:55,dur:R(20,40)}]},
-stomach:()=>{const L=lv(),n=RI(5,10+L*3);return[{t:`Hold it and slap your cock against your stomach, ${n} times. Listen to the sound.`,label:'Cock slaps',bpm:RI(75,95),dur:n*(60/85)+6},{t:"Wrap your hand around it. Slow strokes. Feel how sensitive it is.",label:'Slow strokes',bpm:50,dur:R(20,35)}]}};
+function stroke(kind){const[t,b,d]=PICK(S[kind]);const L=+$('level').value,boost=1+(L-3)*.05;
+ return{t,label:LAB[kind],bpm:Math.round(R(b[0],b[1])*boost),dur:R(d[0],d[1])}}
 function block(){
- const k=weights(),L=lv(),out=[];
+ const k=weights(),L=+$('level').value,out=[];
  if(S[k]){out.push(stroke(k));if(Math.random()<.4)out.push(stroke(PICK(['slow','mid','fast','crawl'])))}
- else if(k==='chaos')out.push(chaos());
- else if(k==='ramp'){const a=RI(35,60),b=RI(150,210+L*8);
+ else if(k==='ramp'){const a=RI(35,60),b=RI(150,210);
    out.push({t:"Start slow and speed up, a little more every second. Don't stop until I say.",label:'Ramp up',ramp:[a,b],bpm:a,dur:R(40,80)});
    out.push({t:"Now slow right down. Barely moving.",label:'Slow down',bpm:RI(25,40),dur:R(10,20)})}
- else if(k==='wave'){const a=RI(45,70),b=RI(140,190+L*8),p=R(Math.max(2,6-L),8-L*.5);
+ else if(k==='wave'){const a=RI(45,70),b=RI(140,190),p=R(4,8);
    out.push({t:"Fast, then slow, over and over. Follow the beat, don't think.",label:'Fast and slow waves',wave:[a,b,p],bpm:a,dur:R(40,70)})}
- else if(k==='edge')out.push(...edgeSteps());
+ else if(k==='edge'){out.push(stroke('mid'));
+   out.push({t:PICK(["Now take yourself to the edge. Fast. Press the button when you're there.","Go to the edge. Don't fall off. Press the button the moment you get close."]),label:'Edge run',bpm:RI(130,170),dur:R(35,75),edgeWait:true});
+   out.push({t:"STOP. Hands off. Don't touch it.",label:'Short hold, hands off',bpm:0,dur:R(4+L,8+L*3)});
+   out.push({t:PICK(LINES.nearly),label:'Breathe',bpm:0,dur:R(3,7)})}
  else if(k==='handsoff')out.push({t:PICK(LINES.hands),label:'Hands off',bpm:0,dur:R(5+L,10+L*3)});
- else out.push(...B[k]());
+ else if(k==='squeeze'){out.push({t:"Squeeze the base. Hard. Hold it there.",label:'Squeeze and hold',bpm:0,dur:R(5,8+L*2)});
+   out.push({t:"Let go slowly. Breathe. Stay on the edge.",label:'Release',bpm:0,dur:R(4,8)})}
+ else if(k==='balls'){const n=RI(5,10+L*3);out.push({t:`Slap your balls. Open hand, ${n} times. Count them out loud.`,label:'Ball slaps',bpm:RI(70,90),dur:n*(60/80)+6});
+   out.push({t:"Now back to stroking. Slow.",label:'Slow strokes',bpm:55,dur:R(20,40)})}
+ else if(k==='stomach'){const n=RI(5,10+L*3);out.push({t:`Hold it and slap your cock against your stomach, ${n} times. Listen to the sound.`,label:'Cock slaps',bpm:RI(75,95),dur:n*(60/85)+6});
+   out.push({t:"Wrap your hand around it. Slow strokes. Feel how sensitive it is.",label:'Slow strokes',bpm:50,dur:R(20,35)})}
  return out}
 
-/* ---------- Random events (can fire any time during 'play') ---------- */
-const GATE={ruin:'ruin',ruinbuild:'ruin',fake:'fakeouts',squeeze:'squeeze',balls:'balls',stomach:'stomach',extend:'extend',deny:'deny'};
-const EVT=[['hold','Surprise hold'],['fake','Fake-out'],['edge','Edge call'],['squeeze','Squeeze'],['balls','Ball slaps'],['stomach','Cock slaps'],['chaos','Speed shifts'],['switch','Switch it up'],['deny','Long denial hold'],['ruin','Ruin now (session continues)'],['extend','Extend session']];
-const evOK=k=>(!GATE[k]||taskSel.has(GATE[k]))&&!(k==='deny'&&lv()<3)&&!(k==='extend'&&extends_>=3)&&!(k==='chaos'&&lv()<2);
-function ev(k){const L=lv();switch(k){
- case 'hold':return[{t:PICK(["STOP. Hands off. Right now.","Freeze. Hands up. Don't you dare touch it."]),label:'Surprise hold',bpm:0,dur:R(6+L,12+L*4)},breathe()];
- case 'fake':return[{t:"Faster. Closer. Take it right up.",label:'Build',bpm:RI(140,175),dur:R(15,30)},{t:PICK(["Almost... almost... NO. Hands off. Not yet.","Hold that thought. Stop. Hands off. You don't get to."]),label:'Fake-out',bpm:0,dur:R(8,14)+L*2},breathe()];
- case 'edge':return edgeSteps();
- case 'squeeze':case 'balls':case 'stomach':return B[k]();
- case 'chaos':return[chaos()];
- case 'switch':return[stroke(PICK(['crawl','fast','slow','mid','fuck']))];
- case 'deny':return[{t:"Hands off. You wait until I'm done with you.",label:'Long denial hold',bpm:0,dur:R(25+L*8,50+L*15)},breathe()];
- case 'ruin':ruins++;lastRuin=elapsed();return[{t:"Cum now. Hands off the second it starts. Let it run out. Ruined.",label:'Ruined',bpm:0,dur:15},{t:"Don't touch. Breathe. It's sensitive.",label:'Recovery',bpm:0,dur:R(15,30)},{t:"Gently. Slow strokes. Work your way back to the edge.",label:'Back to the edge',bpm:RI(35,55),dur:R(40,70)}];
- case 'ruinbuild':return[{t:"Faster. Take yourself right to the edge. Don't stop.",label:'Build to a ruin',bpm:RI(140,180),dur:R(25,50)},...ev('ruin')];
- case 'extend':extends_++;planEnd+=R(120,300);return[{t:"No ending yet. I'm adding more time.",label:'Surprise: more time',bpm:90,dur:R(15,25)}]}return[]}
-function fireEv(k){if(phase!=='play'||paused||!evOK(k))return;const s=ev(k);if(!s.length)return;
- // a ruin sequence locks out random events until it has played out, so events never cut into it
- if(k==='ruin'||k==='ruinbuild')nextEv=Math.max(nextEv,elapsed()+s.reduce((a,x)=>a+x.dur,0)+R(30,60));
- queue.unshift(...s);go(queue.shift())}
-// ruins are independent of the finale: solo sessions pre-plan them in separate time slots, a remote controller triggers them by hand
-let ruinPlan=[],lastRuin=-1e9,ruins=0;
-function planRuins(){ruinPlan=[];ruins=0;lastRuin=-1e9;if(!taskSel.has('ruin'))return;
- let n=[0,RI(0,1),1,RI(1,2),2,RI(2,3)][lv()-1];n=Math.min(n,Math.floor(planEnd*.65/420)); // keeps ~4+ minutes between ruins
- const seg=planEnd*.65/Math.max(n,1);
- for(let i=0;i<n;i++)ruinPlan.push(planEnd*.15+seg*i+seg*R(.3,.7))}
-function randomEvent(){const ks=EVT.map(x=>x[0]).filter(k=>evOK(k)&&k!=='ruin');if(ks.length)fireEv(PICK(ks))}
-const evGap=()=>R(...GAP[lv()-1]);
-
 /* ---------- Session engine ---------- */
-let run=false,paused=false,t0=0,pausedAt=0,pausedTotal=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play',nextEv=0;
+let run=false,paused=false,t0=0,pausedAt=0,pausedTotal=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play';
 let mi=-1,mtimer=null;
 function elapsed(){return((paused?pausedAt:performance.now())-t0-pausedTotal)/1000}
-function say(t){if(!t)return;$('txt').textContent=t;if(voiceOn&&'speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);const v=speechSynthesis.getVoices()[+$('voicesel').value];if(v)u.voice=v;u.volume=+$('vvol').value;u.rate=.95;speechSynthesis.speak(u)}}
+function say(t){$('txt').textContent=t;if(voiceOn&&'speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);const v=speechSynthesis.getVoices()[+$('voicesel').value];if(v)u.voice=v;u.volume=+$('vvol').value;u.rate=.95;speechSynthesis.speak(u)}}
 function updateNext(){const el=$('next');
  if(!showNxt||phase!=='play'){el.textContent='';return}
  if(!queue.length)queue=block();const n=queue[0];
  el.textContent='Next: '+(n.label||'Keep going')+(n.bpm?' at about '+Math.round((n.ramp?n.ramp[0]:n.bpm)*speedMult)+'/min':'')}
-// single source of truth for the current pace; metronome, display and remote all read this
-function curBpm(){if(!cur)return 0;const k=elapsed()-curStart;
- if(cur.ramp)return cur.ramp[0]+(cur.ramp[1]-cur.ramp[0])*Math.min(1,k/cur.dur);
- if(cur.wave)return Math.floor(k/cur.wave[2])%2?cur.wave[1]:cur.wave[0];
- if(cur.phases){let a=0,i=0;const P=cur.phases;for(;i<P.length-1&&k>=a+P[i].d;i++)a+=P[i].d;
-  const p=P[i],pv=i?P[i-1].b:p.b;if(i!==cur.pi){cur.pi=i;say(PHT(p.k));cur.label=p.k==='stop'?'Sudden stop':'Speed shifts';push()}
-  const t=k-a;return p.g&&t<p.g?pv+(p.b-pv)*t/p.g:p.b}
- return cur.bpm||0}
-function go(step){cur=step;cur.pi=-1;curStart=elapsed();curEnd=curStart+step.dur;
- if(step.countdown){step.fakeAt=R(2,5);step.willFake=step.fakes>0&&Math.random()<[0,.25,.45,.6,.75,.9][lv()-1]}
- say(step.t);setBpm(curBpm());updateNext();push()}
-function endPlan(){const L=lv();return minutes*60*R(.85,.95+L*.1)}
+function go(step){cur=step;curStart=elapsed();curEnd=curStart+step.dur;
+ if(step.countdown){step.fakeAt=R(2,5);step.willFake=step.fakes>0&&Math.random()<[0,.25,.45,.6,.75][+$('level').value-1]}
+ say(step.t);setBpm(step.bpm||0);updateNext()}
+function endPlan(){const L=+$('level').value;return minutes*60*R(.85,.95+L*.1)}
 function cdStep(fakes,secs){return{t:"Countdown. Keep stroking. Don't stop.",label:'Countdown',countdown:true,bpm:RI(150,190),dur:secs,fakes}}
 function begin(){
  ac=ac||new(window.AudioContext||window.webkitAudioContext)();ac.resume();
  $('setup').classList.add('hide');$('run').style.display='flex';
  $('faster').classList.toggle('hide',!speedCtl);$('slower').classList.toggle('hide',!speedCtl);
- speedMult=1;run=true;paused=false;t0=performance.now();pausedTotal=0;extends_=0;phase='play';planEnd=endPlan();nextEv=R(40,GAP[lv()-1][0]*.6);planRuins();
+ speedMult=1;run=true;paused=false;t0=performance.now();pausedTotal=0;extends_=0;phase='play';planEnd=endPlan();
  queue=[];nextT=ac.currentTime+.1;beatN=0;
  go({t:PICK(LINES.open),label:'Slow warm-up',bpm:50,dur:R(25,40)});
  $('empty').style.display=media.length?'none':'block';startMedia();
  clearInterval(tick);tick=setInterval(loop,250);if(!window._sch)window._sch=setInterval(sched,40)}
 $('start').onclick=()=>{try{begin()}catch(err){alert('Could not start: '+err.message)}};
-function loop(){if(!run||paused)return;const e=elapsed(),L=lv();
+function loop(){if(!run||paused)return;const e=elapsed();
  const f=1-Math.exp(-3*Math.min(e,planEnd*1.3)/(minutes*60));
  $('heatf').style.width=Math.max(0,Math.min(97,f*98.5+Math.sin(e/9)*1.5))+'%';
- const b=curBpm();if(Math.round(b)!==Math.round(baseBpm))setBpm(b);
- if(phase==='play'){
-  if(!remoteEnd){
-   if(e>=planEnd||(L>=2&&e>planEnd*.35&&e-lastRuin>300&&Math.random()<L*.00002*(e/planEnd))){finale();return}}
-  if(ruinPlan.length&&e>=ruinPlan[0]){ruinPlan.shift();if(!ctrlOn)fireEv('ruinbuild');return}
-  if(e>=nextEv){nextEv=e+evGap();randomEvent();return}
-  if(e>=curEnd){if(!queue.length)queue=block();go(queue.shift());return}}
+ if(cur&&phase==='play'){const k=e-curStart;
+  if(cur.ramp)setBpm(cur.ramp[0]+(cur.ramp[1]-cur.ramp[0])*Math.min(1,k/cur.dur));
+  else if(cur.wave)setBpm(Math.floor(k/cur.wave[2])%2?cur.wave[1]:cur.wave[0])}
+ if(phase==='play'&&e>=planEnd){finale();return}
+ if(phase==='play'&&e>=curEnd){if(!queue.length)queue=block();go(queue.shift());return}
  if(phase==='final'){
   if(cur&&cur.countdown){const rem=curEnd-e;
    if(cur.willFake&&rem<=cur.fakeAt){queue.unshift(cdStep(cur.fakes-1,RI(12,25)));
     go({t:PICK(["No. Not now. Go longer.","Not yet. Keep going. I decide when.","Stop, not yet. You don't get to cum yet."]),label:'Fake-out',bpm:PICK([40,60,90]),dur:R(5,10)});return}
    $('txt').textContent='Cum in '+Math.max(1,Math.ceil(rem))}
   if(e>=curEnd){if(queue.length)go(queue.shift());else finish()}}}
-function finale(forced){const L=lv();
- if(phase!=='play')return;
- if(!forced&&taskSel.has('extend')&&extends_<2&&Math.random()<(L-1)*.1){extends_++;planEnd=Math.max(planEnd,elapsed())+R(180,420);queue=[];nextEv=elapsed()+evGap();go({t:"Did you think we were done? Not yet. Keep going.",label:'Surprise: more time',bpm:90,dur:R(15,25)});return}
- let o=forced||'cum';const r2=Math.random();
- if(!forced){if(taskSel.has('deny')&&L>=4&&r2<.2+(L-4)*.05)o='deny';else if(taskSel.has('ruin')&&r2<(L-1)*.12+.05)o='ruin'}
+function finale(){const L=+$('level').value;
+ if(taskSel.has('extend')&&extends_<2&&Math.random()<(L-1)*.1){extends_++;planEnd+=R(180,420);phase='play';queue=[];go({t:"Did you think we were done? Not yet. Keep going.",label:'Surprise: more time',bpm:90,dur:R(15,25)});return}
+ let o='cum';const r2=Math.random();
+ if(taskSel.has('deny')&&L>=4&&r2<.2)o='deny';else if(taskSel.has('ruin')&&r2<(L-1)*.12+.05)o='ruin';
  phase='final';
  const fakes=taskSel.has('fakeouts')?L-1:0;
  const build=[{t:"Last stretch. Faster, you're so close now.",label:'',bpm:140,dur:R(20,35)},{t:"Right at the edge. Keep going.",label:'',bpm:165,dur:R(10,20)},cdStep(fakes,10)];
@@ -339,17 +290,14 @@ function finale(forced){const L=lv();
  else if(o==='ruin')queue=[...build,{t:"Cum now, then hands off the second it starts. Let it run out. Ruined.",bpm:0,dur:15}];
  else queue=[...build,{t:"Stop. Hands off. No orgasm for you today. Put it away.",bpm:0,dur:10}];
  $('next').textContent='';go(queue.shift())}
-function finish(){setBpm(0);say("Good. Session over.");clearInterval(tick);run=false;clearInterval(mtimer);$('heatf').style.width='100%';$('next').textContent='';push()}
-function setPause(v){if(!run||paused===v)return;paused=v;$('pause').textContent=v?'Resume':'Pause';
- if(v){pausedAt=performance.now();setBpm(0);if('speechSynthesis'in window)speechSynthesis.cancel()}
- else{pausedTotal+=performance.now()-pausedAt;setBpm(curBpm())}push()}
-function endSession(){run=false;clearInterval(tick);clearInterval(mtimer);setBpm(0);if('speechSynthesis'in window)speechSynthesis.cancel();$('run').style.display='none';$('setup').classList.remove('hide');$('stage').querySelectorAll('img,video').forEach(n=>n.remove());push()}
+function finish(){setBpm(0);say("Good. Session over.");clearInterval(tick);run=false;clearInterval(mtimer);$('heatf').style.width='100%';$('next').textContent=''}
 
 $('edge').onclick=()=>{if(!run||paused||phase!=='play')return;
  if(cur&&cur.edgeWait)curEnd=elapsed();
  else{queue.unshift({t:"STOP. Hands off. Hold it right there.",label:'Short hold',bpm:0,dur:R(5,12)});curEnd=elapsed()}}
-$('pause').onclick=()=>setPause(!paused);
-$('stop').onclick=endSession;
+$('pause').onclick=e=>{if(!run)return;paused=!paused;if(paused){pausedAt=performance.now();e.target.textContent='Resume';setBpm(0);if('speechSynthesis'in window)speechSynthesis.cancel()}
+ else{pausedTotal+=performance.now()-pausedAt;e.target.textContent='Pause';setBpm(cur?cur.bpm||0:0)}}
+$('stop').onclick=()=>{run=false;clearInterval(tick);clearInterval(mtimer);setBpm(0);if('speechSynthesis'in window)speechSynthesis.cancel();$('run').style.display='none';$('setup').classList.remove('hide');$('stage').querySelectorAll('img,video').forEach(n=>n.remove())};
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 $('hidebtn').onclick=()=>$('panic').style.display='block';$('panic').onclick=()=>$('panic').style.display='none';
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('panic').style.display='block'});
@@ -361,71 +309,314 @@ function showNext(){if(!media.length)return;let n;do{n=RI(0,media.length-1)}whil
  if(m.video){el.muted=vMuted;el.autoplay=true;el.loop=true;el.playsInline=true;el.play().catch(()=>{})}
  $('stage').insertBefore(el,$('empty'))}
 function startMedia(){clearInterval(mtimer);showNext();mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$('shuf').value*1000)}
+</script>
+</script>
 
-/* ---------- Remote: owner side ---------- */
-const WSU=location.protocol.startsWith('http')?location.origin.replace(/^http/,'ws'):null;
-const ssg=k=>{try{return sessionStorage.getItem(k)}catch{return null}},sss=(k,v)=>{try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch{}};
-const wsend=(w,o)=>{if(w&&w.readyState===1)w.send(JSON.stringify(o))};
-let ows=null,ctrlOn=false,remoteOK=true,remoteEnd=false,ocode='';
-function rst(){$('rstat').textContent=!ocode?'Connecting...':!remoteOK?'Remote is off.':ctrlOn?'Controller connected.':'Waiting for a controller. Share the code.';
- $('badge').textContent=ocode?ocode.slice(0,4)+'-'+ocode.slice(4)+(ctrlOn?' · remote on':''):''}
-function ownerConnect(){if(!WSU){$('rstat').textContent='Remote needs the server (node server.js) and opening the site over http(s).';return}
- const w=ows=new WebSocket(WSU);
- w.onopen=()=>{const c=ssg('oc'),t=ssg('otk');c&&t?wsend(w,{t:'resume',code:c,token:t}):wsend(w,{t:'create'});if(!remoteOK)wsend(w,{t:'allow',v:false})};
- w.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}
-  if(m.t==='created'){ocode=m.code;sss('oc',m.code);sss('otk',m.token);ctrlOn=!!m.ctrl;$('code').textContent=m.code.slice(0,4)+'-'+m.code.slice(4);rst();push()}
-  else if(m.t==='err'){sss('oc',null);sss('otk',null);wsend(w,{t:'create'})}
-  else if(m.t==='ctrl'){ctrlOn=m.on;rst();push()}
-  else if(m.t==='cmd')onCmd(m)};
- w.onclose=()=>{ctrlOn=false;$('rstat').textContent='Reconnecting...';setTimeout(ownerConnect,2000)}}
-function push(){if(!ctrlOn||!remoteOK)return;
- wsend(ows,{t:'state',s:{run,paused,phase,label:cur&&cur.label||'',text:$('txt').textContent,bpm,mult:speedMult,el:Math.round(run?elapsed():0),re:remoteEnd,tasks:[...taskSel],lvl:lv(),ru:ruins}})}
-setInterval(push,1000);
-$('ralw').onclick=e=>{remoteOK=!remoteOK;e.target.textContent=remoteOK?'Allowed':'Off';e.target.classList.toggle('on',remoteOK);wsend(ows,{t:'allow',v:remoteOK});rst()};
-$('rkick').onclick=()=>wsend(ows,{t:'kick'});
-$('rendm').onclick=e=>{remoteEnd=!remoteEnd;e.target.textContent=remoteEnd?'On':'Off';e.target.classList.toggle('on',remoteEnd)};
-// every remote command is whitelisted and range-checked here; the owner's device is the authority
-function onCmd(c){if(!run||!remoteOK)return;
- switch(c.a){
-  case 'speed':speedMult=CL(c.v,.4,2);setBpm(baseBpm);break;
-  case 'pause':setPause(true);break;
-  case 'stop':endSession();break;
-  case 'skip':if(phase==='play'&&!paused)curEnd=elapsed();break;
-  case 'ev':if(typeof c.k==='string'&&EVT.some(x=>x[0]===c.k))fireEv(c.k);break;
-  case 'say':if(phase==='play'&&!paused){queue.unshift({t:String(c.t||'').slice(0,160),label:'Remote order',bpm:CL(c.b,0,260),dur:CL(c.d,3,300)});go(queue.shift())}break;
-  case 'fin':if(!paused&&['cum','ruin','deny'].includes(c.o)&&(c.o==='cum'||taskSel.has(c.o)))finale(c.o);break}
- push()}
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+(() => {
+  "use strict";
 
-/* ---------- Remote: controller side ---------- */
-let cws=null,cCode='',joined=false,rLeave=false,lastTasks='';
-function leave(msg){rLeave=true;joined=false;if(cws)cws.close();$('remote').classList.add('hide');$('jerr').textContent=msg||''}
-function joinConnect(){const w=cws=new WebSocket(WSU);
- w.onopen=()=>wsend(w,{t:'join',code:cCode,token:ssg('c:'+cCode)});
- w.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}
-  if(m.t==='joined'){sss('c:'+cCode,m.token);joined=true;$('jerr').textContent='';$('remote').classList.remove('hide');$('rs').textContent='Connected'}
-  else if(m.t==='err')leave({bad:'Code not found, or remote is off.',busy:'Someone else is already controlling this session.',rate:'Too many tries. Wait a minute.'}[m.e]||'Error')
-  else if(m.t==='kicked')leave('Disconnected by the owner.')
-  else if(m.t==='owner')$('rs').textContent=m.on?'Connected':'Owner offline, waiting...'
-  else if(m.t==='state')rrender(m.s)};
- w.onclose=()=>{if(rLeave)return;if(joined){$('rs').textContent='Reconnecting...';setTimeout(joinConnect,2000)}else $('jerr').textContent='Could not connect.'}}
-$('jbtn').onclick=()=>{if(!WSU){$('jerr').textContent='Open the site through the server to join.';return}
- cCode=$('jcode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(cCode.length!==8){$('jerr').textContent='Codes have 8 characters.';return}
- rLeave=false;joined=false;$('jerr').textContent='Joining...';joinConnect()};
-const cmd=o=>wsend(cws,{t:'cmd',...o});
-const mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
-function rrender(s){
- $('rtxt').textContent=s.run?s.text:'The session is not running.';
- $('rinfo').textContent=(s.label||'')+' · '+(s.bpm?s.bpm+'/min':'hands off')+' · '+mmss(s.el)+(s.paused?' · paused':'')+' · '+LV[s.lvl-1]+' · ruins: '+(s.ru||0);
- $('rspv').textContent=Math.round(s.mult*100)+'%';if(document.activeElement!==$('rsp'))$('rsp').value=s.mult;
- $('rpause').textContent=s.paused?'Paused (owner resumes)':'Pause';
- const tk=s.tasks.join()+s.lvl;if(tk!==lastTasks){lastTasks=tk;const T=new Set(s.tasks);
-  $('revs').innerHTML='';EVT.filter(([k])=>(!GATE[k]||T.has(GATE[k]))&&!(k==='deny'&&s.lvl<3)&&!(k==='chaos'&&s.lvl<2)).forEach(([k,l])=>{const b=document.createElement('button');b.className='chip';b.textContent=l;b.onclick=()=>cmd({a:'ev',k});$('revs').appendChild(b)});
-  $('rfin').innerHTML='';[['cum','End: let them finish'],['ruin','End: ruin it'],['deny','End: deny it']].filter(([o])=>o==='cum'||T.has(o)).forEach(([o,l])=>{const b=document.createElement('button');b.className='chip';b.textContent=l;b.onclick=()=>cmd({a:'fin',o});$('rfin').appendChild(b)})}
- $('rnote').textContent=s.re?'You decide the ending. It will not happen on its own.':'The ending can still come on its own unless you trigger it.'}
-$('rsp').oninput=()=>cmd({a:'speed',v:+$('rsp').value});
-$('rpause').onclick=()=>cmd({a:'pause'});$('rskip').onclick=()=>cmd({a:'skip'});$('rstop').onclick=()=>{if(confirm('End their session?'))cmd({a:'stop'})};
-$('osend').onclick=()=>{const t=$('ot').value.trim();if(!t)return;cmd({a:'say',t,b:+$('ob').value,d:+$('od').value});$('ot').value=''};
-$('rleave').onclick=()=>leave('');
+  const firebaseConfig = {
+    apiKey: "AIzaSyCKWXKfQKeljEW2m2cqumKLDz7J3zW-l8",
+    authDomain: "bestjoi.firebaseapp.com",
+    databaseURL: "https://bestjoi-default-rtdb.firebaseio.com",
+    projectId: "bestjoi",
+    storageBucket: "bestjoi.firebasestorage.app",
+    messagingSenderId: "142981841058",
+    appId: "1:142981841058:web:a065ca74ab0c7d44d457fb"
+  };
 
-ownerConnect();
-</script></body></html>
+  const el = id => document.getElementById(id);
+  const setText = (id, value) => { el(id).textContent = value; };
+  const setDisabled = (id, value) => { el(id).disabled = value; };
+  const show = (id, value) => el(id).classList.toggle("hide", !value);
+
+  let db, user;
+  let ownerCode = null;
+  let ownerRef = null;
+  let pendingUid = null;
+  let controllerCode = null;
+  let controllerSessionRef = null;
+  let ownerRequestRef = null;
+  let ownerRequestHandler = null;
+  let ownerCommandRef = null;
+  let ownerCommandHandler = null;
+  let controllerSessionHandler = null;
+
+  function statusOwner(message) { setText("remoteOwnerStatus", message); }
+  function statusJoin(message) { setText("remoteJoinStatus", message); }
+
+  function makeCode() {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => alphabet[b % alphabet.length]).join("");
+  }
+
+  function detachOwnerListeners() {
+    if (ownerRequestRef && ownerRequestHandler)
+      ownerRequestRef.off("child_added", ownerRequestHandler);
+    if (ownerCommandRef && ownerCommandHandler)
+      ownerCommandRef.off("child_added", ownerCommandHandler);
+    ownerRequestRef = ownerRequestHandler = null;
+    ownerCommandRef = ownerCommandHandler = null;
+  }
+
+  function detachControllerListener() {
+    if (controllerSessionRef && controllerSessionHandler)
+      controllerSessionRef.off("value", controllerSessionHandler);
+    controllerSessionRef = controllerSessionHandler = null;
+  }
+
+  async function createOwnerSession() {
+    if (!user) {
+      statusOwner("Signing in. Please wait, then try again.");
+      return;
+    }
+
+    detachOwnerListeners();
+    ownerCode = makeCode();
+    ownerRef = db.ref("sessions/" + ownerCode);
+
+    try {
+      await ownerRef.set({
+        ownerUid: user.uid,
+        controllerUid: null,
+        remoteAllowed: true,
+        status: "waiting",
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      setText("remoteOwnerCode", ownerCode);
+      setText("remoteRequestStatus", "No pending request.");
+      setDisabled("remoteDisconnect", false);
+      setDisabled("remoteApprove", true);
+      setDisabled("remoteReject", true);
+      pendingUid = null;
+      statusOwner("Code created. Waiting for a join request.");
+
+      ownerRequestRef = db.ref("joinRequests/" + ownerCode);
+      ownerRequestHandler = snapshot => {
+        const request = snapshot.val();
+        if (!request || !request.uid) return;
+        pendingUid = request.uid;
+        setText("remoteRequestStatus", "A device is requesting access.");
+        setDisabled("remoteApprove", false);
+        setDisabled("remoteReject", false);
+      };
+      ownerRequestRef.on("child_added", ownerRequestHandler);
+
+      ownerCommandRef = db.ref("sessions/" + ownerCode + "/commands");
+      ownerCommandHandler = async snapshot => {
+        const command = snapshot.val();
+        if (!command || !ownerRef) return;
+        try {
+          const currentSnap = await ownerRef.get();
+          const current = currentSnap.val();
+          const fresh = command.createdAt &&
+            (Date.now() - command.createdAt < 30000);
+          if (!current || !current.remoteAllowed ||
+              command.uid !== current.controllerUid || !fresh) {
+            await snapshot.ref.remove();
+            return;
+          }
+
+          // Remote commands are deliberately limited to pause, resume and stop.
+          if (command.type === "pause" && run && !paused) el("pause").click();
+          if (command.type === "resume" && run && paused) el("pause").click();
+          if (command.type === "stop" && run) el("stop").click();
+
+          await snapshot.ref.remove();
+          if (command.type === "stop")
+            await ownerRef.update({ status: "ended", controllerUid: null });
+        } catch (error) {
+          statusOwner("Command error: " + error.message);
+        }
+      };
+      ownerCommandRef.on("child_added", ownerCommandHandler);
+    } catch (error) {
+      statusOwner("Could not create code: " + error.message);
+    }
+  }
+
+  async function approveRequest() {
+    if (!pendingUid || !ownerRef || !ownerCode) return;
+    const approvedUid = pendingUid;
+    try {
+      await ownerRef.update({
+        controllerUid: approvedUid,
+        status: "connected",
+        remoteAllowed: true
+      });
+      await db.ref("joinRequests/" + ownerCode + "/" + approvedUid).remove();
+      pendingUid = null;
+      setText("remoteRequestStatus", "Controller approved.");
+      setDisabled("remoteApprove", true);
+      setDisabled("remoteReject", true);
+      statusOwner("Controller connected.");
+    } catch (error) {
+      statusOwner("Approval failed: " + error.message);
+    }
+  }
+
+  async function rejectRequest() {
+    if (!pendingUid || !ownerCode) return;
+    const rejectedUid = pendingUid;
+    try {
+      await db.ref("joinRequests/" + ownerCode + "/" + rejectedUid).remove();
+      pendingUid = null;
+      setText("remoteRequestStatus", "Request rejected.");
+      setDisabled("remoteApprove", true);
+      setDisabled("remoteReject", true);
+    } catch (error) {
+      statusOwner("Could not reject request: " + error.message);
+    }
+  }
+
+  async function disconnectController() {
+    if (!ownerRef) return;
+    try {
+      await ownerRef.update({ controllerUid: null, status: "waiting" });
+      if (ownerCode)
+        await db.ref("sessions/" + ownerCode + "/commands").remove();
+      pendingUid = null;
+      setText("remoteRequestStatus", "No pending request.");
+      setDisabled("remoteApprove", true);
+      setDisabled("remoteReject", true);
+      statusOwner("Controller disconnected. The code remains active.");
+    } catch (error) {
+      statusOwner("Disconnect failed: " + error.message);
+    }
+  }
+
+  async function requestJoin() {
+    const code = el("remoteJoinCode").value.trim().toUpperCase();
+    if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
+      statusJoin("Enter a valid 8-character code.");
+      return;
+    }
+    if (!user) {
+      statusJoin("Signing in. Please try again in a moment.");
+      return;
+    }
+
+    detachControllerListener();
+    controllerCode = code;
+    const sessionRef = db.ref("sessions/" + code);
+
+    try {
+      const snap = await sessionRef.get();
+      const session = snap.val();
+      if (!session || session.status === "ended") {
+        statusJoin("Session not found or already ended.");
+        return;
+      }
+      if (!session.remoteAllowed) {
+        statusJoin("Remote control is disabled by the owner.");
+        return;
+      }
+
+      await db.ref("joinRequests/" + code + "/" + user.uid).set({
+        uid: user.uid,
+        requestedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      statusJoin("Request sent. Waiting for owner approval.");
+      controllerSessionRef = sessionRef;
+      controllerSessionHandler = snapshot => {
+        const data = snapshot.val();
+        if (!data || data.status === "ended") {
+          statusJoin("The session has ended.");
+          show("remoteControllerPanel", false);
+          return;
+        }
+        if (data.controllerUid === user.uid && data.remoteAllowed) {
+          statusJoin("Connected. Remote controls are available.");
+          show("remoteControllerPanel", true);
+        } else {
+          statusJoin("Waiting for owner approval...");
+          show("remoteControllerPanel", false);
+        }
+      };
+      sessionRef.on("value", controllerSessionHandler);
+    } catch (error) {
+      statusJoin("Could not request access: " + error.message);
+    }
+  }
+
+  async function sendCommand(type) {
+    if (!controllerCode || !user) return;
+    try {
+      const snap = await db.ref("sessions/" + controllerCode).get();
+      const session = snap.val();
+      if (!session || session.controllerUid !== user.uid ||
+          !session.remoteAllowed || session.status === "ended") {
+        statusJoin("You are no longer connected or authorized.");
+        show("remoteControllerPanel", false);
+        return;
+      }
+      await db.ref("sessions/" + controllerCode + "/commands").push({
+        type,
+        uid: user.uid,
+        createdAt: Date.now()
+      });
+      statusJoin("Sent: " + type + ".");
+    } catch (error) {
+      statusJoin("Could not send command: " + error.message);
+    }
+  }
+
+  el("remoteCreate").addEventListener("click", createOwnerSession);
+  el("remoteApprove").addEventListener("click", approveRequest);
+  el("remoteReject").addEventListener("click", rejectRequest);
+  el("remoteDisconnect").addEventListener("click", disconnectController);
+  el("remoteJoin").addEventListener("click", requestJoin);
+  el("remoteControllerPause").addEventListener("click", () => sendCommand("pause"));
+  el("remoteControllerResume").addEventListener("click", () => sendCommand("resume"));
+  el("remoteControllerStop").addEventListener("click", () => {
+    if (confirm("Stop the session on the owner device?")) sendCommand("stop");
+  });
+
+  // Keep the database status in sync when the owner uses local controls.
+  el("stop").addEventListener("click", async () => {
+    if (ownerRef) {
+      try { await ownerRef.update({ status: "ended", controllerUid: null }); }
+      catch (error) { statusOwner("Could not update session status: " + error.message); }
+    }
+  });
+
+  // Reflect local pause/resume state to the controller's session status.
+  el("pause").addEventListener("click", async () => {
+    if (ownerRef) {
+      try { await ownerRef.update({ status: paused ? "paused" : "connected" }); }
+      catch (error) { statusOwner("Could not update pause status: " + error.message); }
+    }
+  });
+
+  remoteAuthSignIn();
+
+  async function remoteAuthSignIn() {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const credential = await auth.signInAnonymously();
+      user = credential.user;
+      db = firebase.database();
+      statusOwner("Connected to Firebase. Create a code when ready.");
+      statusJoin("Connected to Firebase. Enter the owner's code.");
+    } catch (error) {
+      statusOwner("Firebase sign-in failed: " + error.message);
+      statusJoin("Firebase sign-in failed: " + error.message);
+    }
+  }
+
+  window.addEventListener("beforeunload", () => {
+    detachOwnerListeners();
+    detachControllerListener();
+  });
+})();
+</script>
+</body></html>
