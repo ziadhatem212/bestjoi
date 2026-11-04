@@ -15,7 +15,7 @@ h1{font-size:28px;margin:8px 0 2px}
 section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 14px}
 h2{font-size:15px;margin:0 0 12px;color:var(--warm);font-weight:600}
 .dialwrap{display:flex;flex-direction:column;align-items:center}
-#dial{width:260px;height:260px;touch-action:none;cursor:pointer}
+#dial{width:260px;max-width:100%;height:260px;touch-action:none;cursor:pointer}
 #dialval{font:600 44px system-ui;fill:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center}
 .chip,.opt{background:#1d1122;border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:7px 14px;font-size:14px;cursor:pointer}
@@ -24,9 +24,11 @@ h2{font-size:15px;margin:0 0 12px;color:var(--warm);font-weight:600}
 .row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
 .row label{min-width:120px;color:var(--mute);font-size:14px}
 input[type=range]{flex:1;min-width:140px;accent-color:var(--hot)}
-select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px}
+select,input[type=file],input[type=text],input:not([type]){background:#1d1122;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px;max-width:100%}
 .big{width:100%;background:var(--hot);color:#fff;border:0;border-radius:12px;padding:16px;font-size:18px;font-weight:600;cursor:pointer}
+.big.alt{background:transparent;border:2px solid var(--warm);color:var(--warm)}
 .ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:14px}
+.ghost:disabled,.chip:disabled{opacity:.45;cursor:not-allowed}
 #run{display:none;position:fixed;inset:0;background:var(--bg);z-index:5;flex-direction:column}
 #stage{flex:1;position:relative;background:#0d0710;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
 #stage img,#stage video{max-width:100%;max-height:100%;object-fit:contain}
@@ -35,14 +37,36 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 #txt{font-size:clamp(20px,4.6vw,32px);line-height:1.3;margin:0}
 #next{font:14px system-ui;color:var(--mute);min-height:20px}
 #bpm{font:14px system-ui;color:var(--warm);margin-top:6px;min-height:20px}
-#bar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;justify-content:center}
+#bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;justify-content:center}
 #heat{flex:1;min-width:160px;height:10px;background:#1d1122;border-radius:6px;overflow:hidden}
 #heatf{height:100%;width:0;background:linear-gradient(90deg,var(--warm),var(--hot));transition:width 2s linear}
 #beat{width:16px;height:16px;border-radius:50%;background:var(--hot);opacity:.25;transition:all .08s}
 #beat.p{opacity:1;transform:scale(1.35)}
+#challenge{border-color:var(--warm);color:var(--warm);font-weight:600}
 #panic{position:fixed;inset:0;background:#fff;z-index:9;display:none;color:#222;font:18px system-ui;padding:40px}
 .hide{display:none!important}
 .note{font:13px system-ui;color:var(--mute);margin:8px 0 0}
+
+/* ---- event / challenge system ---- */
+#evBanner{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:5;background:linear-gradient(90deg,var(--warm),var(--hot));color:#190e1d;font:700 16px system-ui;padding:8px 18px;border-radius:999px;box-shadow:0 4px 18px rgba(255,61,129,.45);animation:evpulse 1s ease-in-out infinite;white-space:nowrap;max-width:94%}
+@keyframes evpulse{50%{transform:translateX(-50%) scale(1.06)}}
+#evPanel{position:absolute;inset:0;z-index:7;background:rgba(13,7,16,.92);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.evCard{width:100%;max-width:520px;margin:auto;background:linear-gradient(160deg,#35193f,#26162b);border:2px solid var(--hot);border-radius:18px;padding:22px 20px;text-align:center;box-shadow:0 0 0 4px rgba(255,179,71,.22),0 12px 40px rgba(0,0,0,.6);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+#evTag{font:700 12px system-ui;letter-spacing:.16em;color:var(--warm);text-transform:uppercase}
+#evTitle{font:700 clamp(24px,6vw,34px)/1.2 Georgia,serif;margin:8px 0;color:var(--ink)}
+#evDesc{font:clamp(16px,4vw,19px)/1.45 Georgia,serif;margin:0 0 6px;color:var(--ink)}
+#evSub{font:13px system-ui;color:var(--mute);margin:6px 0 0}
+#evCd{font:600 14px system-ui;color:var(--warm);min-height:20px;margin-top:6px}
+.evBtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.evBtns .big{flex:1 1 180px;padding:14px;font-size:16px}
+.evBtns .ghost{flex:1 1 100%}
+.evNote{font:12px system-ui;color:var(--mute);margin-top:12px}
+@media(max-width:520px){
+  .evCard{padding:18px 14px}
+  #bar{gap:6px;padding:8px}
+  .ghost{padding:8px 10px;font-size:13px}
+  .row label{min-width:100px}
+}
 </style>
 </head>
 <body>
@@ -64,27 +88,7 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 <div class="chips" id="presets"></div>
 </div>
 </section>
-  
-<section>
-  <h2>Random Breaks</h2>
 
-  <div class="row">
-    <label>Enable random breaks</label>
-    <button class="chip" id="randomBreakToggle">Off</button>
-  </div>
-
-  <div class="row">
-    <label>Number of breaks</label>
-    <input type="range" id="randomBreakCount" min="1" max="5" value="2">
-    <span id="randomBreakCountValue">2</span>
-  </div>
-
-  <p class="note">
-    Breaks are scheduled randomly throughout the session.
-    The session pauses when a break occurs and waits for you to resume.
-  </p>
-</section>
-  
 <section>
 <h2>Style</h2>
 <div class="grid" id="styles"></div>
@@ -136,7 +140,11 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 <label>Show what's next</label>
 <button class="chip on" id="shownext">On</button>
 </div>
-<p class="note">When speed control is allowed, Faster and Slower buttons appear during the session and change every pace by 10% a tap.</p>
+<div class="row">
+<label>Random events</label>
+<button class="chip on" id="evtoggle">On</button>
+</div>
+<p class="note">When speed control is allowed, Faster and Slower buttons appear during the session and change every pace by 10% a tap. Random events pause the session at unannounced moments (with a short countdown) and ask you to confirm a small activity. The CHALLENGE button is always available during a session.</p>
 </section>
 
 <section>
@@ -203,6 +211,25 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 <div id="run">
 <div id="stage">
 <div id="empty">No media loaded</div>
+
+<div id="evBanner" class="hide"><span>⏱ Event in </span><b id="evBannerCd">0:00</b></div>
+
+<div id="evPanel" class="hide" role="dialog" aria-live="assertive">
+<div class="evCard">
+<div id="evTag">Event</div>
+<div id="evTitle"></div>
+<div id="evCd"></div>
+<p id="evDesc"></p>
+<p id="evSub" class="hide"></p>
+<div class="evBtns">
+<button class="big" id="evDid">I DID IT</button>
+<button class="big alt" id="evDidnt">I DIDN'T DO IT</button>
+<button class="ghost hide" id="evSkip">Skip this challenge</button>
+</div>
+<div class="evNote">Adjust or skip anything that doesn't feel comfortable. Pause and End stay available below.</div>
+</div>
+</div>
+
 <div id="cap">
 <p id="txt"></p>
 <div id="bpm"></div>
@@ -216,6 +243,7 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 <button class="ghost hide" id="slower">Slower</button>
 <button class="ghost hide" id="faster">Faster</button>
 <button class="ghost" id="edge">I'm at the edge</button>
+<button class="ghost" id="challenge">CHALLENGE</button>
 <button class="ghost" id="pause">Pause</button>
 <button class="ghost" id="fs">Fullscreen</button>
 <button class="ghost" id="hidebtn">Hide</button>
@@ -223,98 +251,15 @@ select,input[type=file]{background:#1d1122;color:var(--ink);border:1px solid var
 </div>
 </div>
 
-<div id="randomBreakOverlay" style="
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:10;
-  background:rgba(13,7,16,.97);
-  color:#f1e7ec;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  text-align:center;
-  padding:25px;
-  font-family:system-ui;
-">
-  <h1>Random Break</h1>
-  <p>The session is paused.</p>
-  <button class="big" id="resumeRandomBreak" style="max-width:300px">
-    Resume Session
-  </button>
-</div>
-
 <div id="panic">Notes<br><br>Tap anywhere to come back.</div>
 
 <script>
 const $=id=>document.getElementById(id);
 const R=(a,b)=>a+Math.random()*(b-a), RI=(a,b)=>Math.floor(R(a,b+1)), PICK=a=>a[Math.floor(Math.random()*a.length)];
+const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
 
 /* ---------- Setup UI ---------- */
 let minutes=30;
-  /* ---------- Random Break Configuration ---------- */
-
-let randomBreaksEnabled = false;
-let randomBreakTimes = [];
-let randomBreakIndex = 0;
-let randomBreakActive = false;
-
-$('randomBreakToggle').onclick = e => {
-  randomBreaksEnabled = !randomBreaksEnabled;
-
-  e.target.textContent = randomBreaksEnabled ? 'On' : 'Off';
-  e.target.classList.toggle('on', randomBreaksEnabled);
-};
-
-$('randomBreakCount').oninput = e => {
-  $('randomBreakCountValue').textContent = e.target.value;
-};
-
-function scheduleRandomBreaks() {
-  randomBreakTimes = [];
-  randomBreakIndex = 0;
-
-  if (!randomBreaksEnabled) return;
-
-  const count = +$('randomBreakCount').value;
-
-  // Keep breaks away from the very beginning and end.
-  const earliest = planEnd * 0.10;
-  const latest = planEnd * 0.90;
-
-  const available = latest - earliest;
-
-  for (let i = 0; i < count; i++) {
-    randomBreakTimes.push(
-      earliest + Math.random() * available
-    );
-  }
-
-  randomBreakTimes.sort((a, b) => a - b);
-}
-
-function triggerRandomBreak() {
-  if (!run || paused || randomBreakActive) return;
-
-  randomBreakActive = true;
-
-  // Pause using the existing pause control.
-  $('pause').click();
-
-  $('randomBreakOverlay').style.display = 'flex';
-}
-
-$('resumeRandomBreak').onclick = () => {
-  if (!randomBreakActive) return;
-
-  $('randomBreakOverlay').style.display = 'none';
-
-  randomBreakActive = false;
-
-  if (run && paused) {
-    $('pause').click();
-  }
-};
 const MINS=[5,10,15,25,30,45,60,90,120,150,180];
 const svg=$('dial'),knob=$('knob'),arc=$('arc');
 
@@ -328,7 +273,9 @@ const x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);
 knob.setAttribute('cx',x);
 knob.setAttribute('cy',y);
 const sx=cx,sy=cy-r,large=m/180>.5?1:0;
-arc.setAttribute('d',m>=180?`M${sx} ${sy} A${r} ${r} 0 1 1 ${sx-.01} ${sy}`:`M${sx} ${sy} A${r} ${r} 0 ${large} 1 ${x} ${y}`);
+arc.setAttribute('d',m>=180
+  ?`M${sx} ${sy} A${r} ${r} 0 1 1 ${sx-.01} ${sy}`
+  :`M${sx} ${sy} A${r} ${r} 0 ${large} 1 ${x} ${y}`);
 document.querySelectorAll('#presets .chip').forEach(c=>c.classList.toggle('on',+c.dataset.m===m));
 }
 
@@ -343,7 +290,8 @@ setMin(a/(2*Math.PI)*180);
 let drag=false;
 svg.addEventListener('pointerdown',e=>{drag=true;svg.setPointerCapture(e.pointerId);dialMove(e)});
 svg.addEventListener('pointermove',e=>{if(drag)dialMove(e)});
-svg.addEventListener('pointerup',()=>drag=false);
+svg.addEventListener('pointerup',()=>{drag=false});
+svg.addEventListener('pointercancel',()=>{drag=false});
 
 MINS.forEach(m=>{
 const b=document.createElement('button');
@@ -377,10 +325,10 @@ toggles('styles',STYLES,styleSel);
 toggles('tasks',TASKS,taskSel);
 
 const LV=['Gentle','Easy','Medium','Hard','Brutal'];
-$('level').oninput=()=>$('lvlname').textContent=LV[$('level').value-1];
+$('level').oninput=()=>{$('lvlname').textContent=LV[$('level').value-1];};
 $('level').oninput();
 
-let metroOn=true,voiceOn=false,vMuted=true;
+let metroOn=true,voiceOn=false,vMuted=true,evOn=true;
 
 $('metro').onclick=e=>{
 metroOn=!metroOn;
@@ -392,6 +340,7 @@ $('voice').onclick=e=>{
 voiceOn=!voiceOn;
 e.target.textContent=voiceOn?'On':'Off';
 e.target.classList.toggle('on',voiceOn);
+if(!voiceOn&&'speechSynthesis' in window)speechSynthesis.cancel();
 };
 
 $('vsound').onclick=e=>{
@@ -400,21 +349,68 @@ e.target.textContent=vMuted?'Muted':'With sound';
 e.target.classList.toggle('on',!vMuted);
 };
 
+$('evtoggle').onclick=e=>{
+evOn=!evOn;
+e.target.textContent=evOn?'On':'Off';
+e.target.classList.toggle('on',evOn);
+};
+
+/* ---------- Voices ---------- */
+let voices=[],selURI=null;
+
 function loadVoices(){
-const v=speechSynthesis.getVoices();
-$('voicesel').innerHTML=v.map((x,i)=>`<option value="${i}">${x.name} (${x.lang})</option>`).join('');
+if(!('speechSynthesis' in window))return;
+voices=speechSynthesis.getVoices()||[];
+const sel=$('voicesel');
+sel.innerHTML='';
+if(!voices.length){
+const o=document.createElement('option');
+o.value='-1';
+o.textContent='Default voice';
+sel.appendChild(o);
+return;
 }
+voices.forEach((v,i)=>{
+const o=document.createElement('option');
+o.value=String(i);
+o.textContent=v.name+' ('+v.lang+')';
+sel.appendChild(o);
+});
+let idx=selURI?voices.findIndex(v=>v.voiceURI===selURI):-1;
+if(idx<0){
+const lang=(navigator.language||'en').toLowerCase();
+idx=voices.findIndex(v=>v.default);
+if(idx<0)idx=voices.findIndex(v=>v.lang&&v.lang.toLowerCase().startsWith(lang.slice(0,2)));
+if(idx<0)idx=0;
+}
+sel.value=String(idx);
+selURI=voices[idx].voiceURI;
+}
+
+function getVoice(){
+const i=+$('voicesel').value;
+return voices[i]||null;
+}
+
+$('voicesel').onchange=()=>{
+const v=getVoice();
+selURI=v?v.voiceURI:null;
+};
 
 if('speechSynthesis' in window){
 loadVoices();
-speechSynthesis.onvoiceschanged=loadVoices;
+if(speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',loadVoices);
+else speechSynthesis.onvoiceschanged=loadVoices;
+setTimeout(loadVoices,500);
+setTimeout(loadVoices,1500);
 }
 
-$('shuf').oninput=()=>$('shufv').textContent=$('shuf').value+'s';
+$('shuf').oninput=()=>{$('shufv').textContent=$('shuf').value+'s';};
 
 let media=[];
 
 $('files').onchange=e=>{
+media.forEach(m=>{try{URL.revokeObjectURL(m.url);}catch(err){}});
 media=[...e.target.files].map(f=>({url:URL.createObjectURL(f),video:f.type.startsWith('video')}));
 $('count').textContent=media.length+' file(s) loaded. Files stay on your device.';
 };
@@ -584,28 +580,38 @@ return out;
 }
 
 /* ---------- Session engine ---------- */
-let run=false,paused=false,t0=0,pausedAt=0,pausedTotal=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play';
+let run=false,paused=false,t0=0,planEnd=0,queue=[],cur=null,curStart=0,curEnd=0,tick=null,extends_=0,phase='play';
 let forceOutcome=null;
 
-// Remote instruction and temporary ruin state
+// Clock halting: the session clock stops for any halt reason (user pause, event lock).
+let haltAt=0,haltTotal=0;
+const haltReasons=new Set();
+function haltClock(r){if(!haltReasons.size)haltAt=performance.now();haltReasons.add(r);}
+function releaseClock(r){if(!haltReasons.delete(r))return;if(!haltReasons.size)haltTotal+=performance.now()-haltAt;}
+function elapsed(){return((haltReasons.size?haltAt:performance.now())-t0-haltTotal)/1000;}
+
+// Temporary ruin state
 let ruinActive=false;
 let ruinSnapshot=null;
 
 let mi=-1,mtimer=null;
 
-function elapsed(){return((paused?pausedAt:performance.now())-t0-pausedTotal)/1000;}
-
-function say(t){
-$('txt').textContent=t;
-if(voiceOn&&'speechSynthesis'in window){
+function speak(t){
+if(!voiceOn||!('speechSynthesis'in window))return;
+try{
 speechSynthesis.cancel();
 const u=new SpeechSynthesisUtterance(t);
-const v=speechSynthesis.getVoices()[+$('voicesel').value];
-if(v)u.voice=v;
+const v=getVoice();
+if(v){u.voice=v;u.lang=v.lang;}
 u.volume=+$('vvol').value;
 u.rate=.95;
 speechSynthesis.speak(u);
+}catch(err){}
 }
+
+function say(t){
+$('txt').textContent=t;
+speak(t);
 }
 
 function updateNext(){
@@ -638,6 +644,314 @@ function cdStep(fakes,secs){
 return{t:"Countdown. Keep stroking. Don't stop.",label:'Countdown',countdown:true,bpm:RI(150,190),dur:secs,fakes};
 }
 
+/* ---------- Events and challenges (centralized) ---------- */
+const EV_LEAD=15; // seconds of visible countdown before a random event
+  
+const EV_EVENTS=[
+['Random-timer plug',L=>`Plug in, or play with your ass, for ${RI(10,40)} minutes. Set a timer now and keep it going until it rings.`],
+['Dice roll: fingers',()=>{const n=RI(1,6);return `The die says ${n}. Finger yourself for ${n} minute${n>1?'s':''}. Touch nothing else while you do it.`;}],
+['Surprise session',()=>'Surprise. You have 5 minutes to get in position and start playing with your ass. Set a timer and go.'],
+['Edge three times',()=>'Get close to the edge 3 times. Stop each time before you tip over, and count them out loud. After the third, hands off.'],
+['Hands behind your back',L=>`Hands behind your back for ${3+L} minutes, or cuffed if you have them. Think about everything you are missing.`],
+['Ice then squeeze',()=>'Hold ice on your balls for 30 seconds, then give them a firm squeeze and hold it for 10 seconds.'],
+['Blindfold',L=>`Put on a blindfold for ${3+L*2} minutes. Keep still and imagine every touch is a surprise.`],
+['Nipple clamps',L=>`Put on nipple clamps for ${5+L*2} minutes. Take them off earlier if the pain turns sharp or you lose feeling.`],
+
+['Plug time',L=>`Keep a plug in for the next ${10+L*5} minutes while you stay completely still.`],
+['Edging marathon',L=>`Edge ${2+L} times in a row with no release. Hands off for 10 seconds after each one.`]
+];
+
+const EV_CONSEQ=[
+['Spanking',L=>{const n=RI(10,50);return `Spank your ass ${n} times with a hand, paddle or belt. Count out loud. Every miscount or mistake adds 5 more.`;}],
+['Coin-flip ball slaps',()=>{const n=Math.random()<.5?10:20;return `The coin says ${n}. Give your balls ${n} firm open-hand slaps. Firm, not brutal. Stop if the pain turns sharp.`;}],
+['Squeeze and hold',L=>`Grip or stretch your balls with your hand or a strap for ${20+L*10} seconds. Don't let go early.`],
+['Ice and squeeze',()=>'Ice on your balls for 30 seconds, then a firm squeeze and hold for 10 seconds.'],
+['Denial draw',()=>{const d=PICK(['1 hour','2 hours','3 hours','6 hours','12 hours','24 hours']);return `Your draw from the jar: no touching for ${d} after this session. Say it out loud so it counts.`;}],
+['Hands cuffed',L=>`Hands behind your back or cuffed for ${4+L*2} minutes while you say out loud what you are missing.`],
+['Nipple clamps + extra',L=>`Wear nipple clamps for ${5+L*3} minutes. Add 2 extra minutes for every rule you broke tonight. Take them off if the pain turns sharp.`],
+
+['Flogging or crop',L=>`Give yourself ${8+L*4} strikes with a flogger or crop on your thighs, ass or back. Count them out loud.`],
+['Pinch and scratch',()=>{const n=RI(1,6)*3;return `The die gives ${n}. Pinch and scratch your inner thighs and nipples ${n} times in total.`;}],
+['Ice until it melts',()=>'Hold an ice cube on a sensitive spot (nipple, inner thigh or balls) until it has completely melted.'],
+
+
+['Tied up',L=>`Tie or cuff your wrists behind your back for ${5+L*2} minutes, or to the bed if you can. You decide nothing until it's over.`],
+['Chastity or ring',()=>'Wear a cock ring or chastity device for the next 30 minutes. Never wear anything tight for more than 30 to 60 minutes, and take it off if you feel numbness.'],
+['Serve for 20',()=>'Serve your partner for 20 minutes however they want (oral, massage, anything) and get nothing in return. If you are alone, kneel for 20 minutes with your hands behind your back.'],
+['Ruined edge',()=>'Take yourself to the peak, then take your hands away right before it tips. Ruin it completely.'],
+
+['Plug while on display',L=>`Keep a plug in for ${10+L*5} minutes while doing a task or standing on display.`],
+['Anal on their terms',()=>'Whoever is in charge picks the toy, the depth and the pace. You hold still and take it for 5 minutes. If alone, pick the toy and depth, then go slowly.'],
+['Dice roll: fingers',()=>{const n=RI(1,6)*2;return `Finger yourself for ${n} minutes. Touch nothing else while you do it.`;}]
+];
+// Combo cards: two random punishments at once
+{
+const base=EV_CONSEQ.slice();
+EV_CONSEQ.push(['Combo card',L=>{
+const a=PICK(base);let b=PICK(base);let g=0;
+while(b===a&&g++<10)b=PICK(base);
+return `Two cards. First: ${a[0]}. ${a[1](L)} Then: ${b[0]}. ${b[1](L)}`;
+}]);
+}
+
+const EV_CHALLENGES=[
+['Surprise plug',L=>`Play with your ass or keep a plug in for ${RI(10,40)} minutes. Set a timer and don't touch your cock until it rings.`],
+['Dice roll: fingers',()=>{const n=RI(1,6);return `Roll the die: ${n}. Finger yourself for ${n} minute${n>1?'s':''} and touch nothing else.`;}],
+['Three edges',()=>'Edge 3 times. Stop short each time, count them out loud, and then stop for good.'],
+['Beg and spank',L=>`Beg out loud for each of ${5+L*3} spanks. Every miscount adds 5 more.`],
+['Ice contrast',()=>'Ice on your balls for 30 seconds, then a firm squeeze and hold. Go as hard as feels good, not more.'],
+['Nipple clamps',L=>`Wear nipple clamps for ${5+L*2} minutes. Add a minute for every moan you can't hold back.`],
+
+['Blindfold touch',L=>`Blindfold on for ${3+L*2} minutes. Every touch is a surprise, so don't guess where it's coming.`],
+
+
+
+['Ruin run',()=>'Edge as hard as you can. Right before the peak, hands off. Hold still until it fades.'],
+['Chastity trial',()=>'Wear a ring or chastity device for 30 minutes. Never keep anything tight on longer than 30 to 60 minutes.'],
+['Nude chores',()=>'Do a quick household task naked. Spank yourself for every mistake.'],
+['Pinch count',()=>{const n=RI(1,6)*3;return `Roll for it: ${n} pinches and scratches on your inner thighs and nipples.`;}]
+];
+
+
+const EVT={mode:null,kind:null,locked:false,item:null,conseq:null,fireAt:0,schedule:[]};
+
+function evPick(pool){const p=PICK(pool);return{title:p[0],desc:p[1](+$('level').value)};}
+function evPub(){if(typeof window.RC_pub==='function'){try{window.RC_pub();}catch(err){}}}
+
+function evMakeSchedule(){
+const L=+$('level').value,win=minutes*60*.8;
+let n=Math.round(minutes/15*[.6,.9,1.3,1.8,2.5][L-1]);
+n=Math.max(1,Math.min(12,n));
+const lo=Math.max(EV_LEAD+10,Math.min(60,win*.15));
+const ts=[];
+for(let i=0;i<n;i++)ts.push(R(lo,win));
+ts.sort((a,b)=>a-b);
+const gap=Math.max(60,Math.min(150,win/(n+1)*.6)),out=[];
+ts.forEach(t=>{
+const p=out.length?out[out.length-1]+gap:0;
+const v=Math.max(t,p);
+if(v<=win)out.push(v);
+});
+return out;
+}
+
+function evRespace(){
+let t=elapsed()+EV_LEAD+30;
+EVT.schedule=EVT.schedule.map(x=>{const v=Math.max(x,t);t=v+60;return v;});
+}
+
+function evShift(s){
+EVT.schedule=EVT.schedule.map(x=>x+s);
+if(EVT.fireAt)EVT.fireAt+=s;
+}
+
+function evReset(){
+EVT.mode=null;EVT.kind=null;EVT.item=null;EVT.conseq=null;EVT.fireAt=0;EVT.schedule=[];
+EVT.locked=false;
+haltReasons.delete('event');
+}
+
+function lockSession(){
+if(EVT.locked)return;
+EVT.locked=true;
+haltClock('event');
+setBpm(0);
+if('speechSynthesis'in window)speechSynthesis.cancel();
+}
+
+function unlockSession(){
+if(!EVT.locked)return;
+EVT.locked=false;
+releaseClock('event');
+if(run){
+if(cur){
+say(cur.t);
+if(!paused)setBpm(cur.bpm||0);
+}
+updateNext();
+}
+}
+
+function evRender(){
+const m=EVT.mode,banner=$('evBanner'),panel=$('evPanel');
+if(!run||!m){banner.classList.add('hide');panel.classList.add('hide');return;}
+if(m==='countdown'){
+banner.classList.remove('hide');
+panel.classList.add('hide');
+$('evBannerCd').textContent=mmss(EVT.fireAt-elapsed());
+return;
+}
+banner.classList.add('hide');
+panel.classList.remove('hide');
+const sub=$('evSub'),did=$('evDid'),didnt=$('evDidnt'),skip=$('evSkip');
+sub.classList.add('hide');
+$('evCd').textContent=paused?'⏸ Session paused':'Session is waiting for you';
+if(m==='confirm'){
+$('evTag').textContent='Random event';
+$('evTitle').textContent=EVT.item?EVT.item.title:'';
+$('evDesc').textContent=EVT.item?EVT.item.desc:'';
+did.textContent='I DID IT';
+didnt.classList.remove('hide');
+skip.classList.add('hide');
+}else if(m==='consequence'){
+$('evTag').textContent="Consequence";
+$('evTitle').textContent=EVT.conseq?EVT.conseq.title:'';
+$('evDesc').textContent=EVT.conseq?EVT.conseq.desc:'';
+if(EVT.item){sub.textContent='Instead of: '+EVT.item.title;sub.classList.remove('hide');}
+did.textContent='I COMPLETED IT';
+didnt.classList.add('hide');
+skip.classList.add('hide');
+}else if(m==='challenge'){
+$('evTag').textContent='Optional challenge';
+$('evTitle').textContent=EVT.item?EVT.item.title:'';
+$('evDesc').textContent=EVT.item?EVT.item.desc:'';
+did.textContent='I COMPLETED IT';
+didnt.classList.add('hide');
+skip.classList.remove('hide');
+}
+}
+
+function evStartCountdown(fireAt){
+if(EVT.mode||!run)return false;
+EVT.mode='countdown';EVT.kind='event';EVT.fireAt=fireAt;
+evRender();evPub();
+return true;
+}
+
+function evFire(){
+if(!run||EVT.locked||(EVT.mode&&EVT.mode!=='countdown'))return false;
+EVT.mode='confirm';EVT.kind='event';EVT.item=evPick(EV_EVENTS);EVT.conseq=null;EVT.fireAt=0;
+lockSession();
+speak('Event. '+EVT.item.title+'. '+EVT.item.desc);
+evRender();evPub();
+return true;
+}
+
+function evResolve(done){
+if(EVT.kind!=='event'||EVT.mode!=='confirm')return;
+if(done){evComplete();return;}
+EVT.conseq=evPick(EV_CONSEQ);
+EVT.mode='consequence';
+speak('Consequence. '+EVT.conseq.title+'. '+EVT.conseq.desc);
+evRender();evPub();
+}
+
+function evComplete(){
+if(!EVT.mode||EVT.mode==='countdown')return;
+EVT.mode=null;EVT.kind=null;EVT.item=null;EVT.conseq=null;EVT.fireAt=0;
+evRespace();
+unlockSession();
+evRender();evPub();
+}
+
+function evCancel(reason){
+if(!EVT.mode)return false;
+if(EVT.mode==='countdown'&&reason==='phase')EVT.schedule.unshift(EVT.fireAt);
+EVT.mode=null;EVT.kind=null;EVT.item=null;EVT.conseq=null;EVT.fireAt=0;
+if(reason!=='phase')evRespace();
+unlockSession();
+evRender();evPub();
+return true;
+}
+
+function chStart(){
+if(!run||paused)return false;
+if(EVT.mode==='countdown')evCancel('phase');
+if(EVT.mode)return false;
+EVT.mode='challenge';EVT.kind='challenge';EVT.item=evPick(EV_CHALLENGES);EVT.conseq=null;
+lockSession();
+speak('Challenge. '+EVT.item.title+'. '+EVT.item.desc);
+evRender();evPub();
+return true;
+}
+
+function evTick(){
+if(!run||paused||EVT.locked)return;
+const e=elapsed();
+if(phase!=='play'||ruinActive){
+if(EVT.mode==='countdown')evCancel('phase');
+return;
+}
+if(EVT.mode==='countdown'){
+if(EVT.fireAt-e<=0)evFire();
+else evRender();
+return;
+}
+if(EVT.mode===null&&evOn&&EVT.schedule.length){
+const next=EVT.schedule[0];
+if(next>planEnd-EV_LEAD-10){EVT.schedule.shift();return;}
+if(next-e<=EV_LEAD){
+EVT.schedule.shift();
+evStartCountdown(Math.max(next,e+5));
+}
+}
+}
+
+$('evDid').onclick=()=>{if(EVT.mode==='confirm')evResolve(true);else evComplete();};
+$('evDidnt').onclick=()=>evResolve(false);
+$('evSkip').onclick=()=>evCancel('skip');
+$('challenge').onclick=()=>chStart();
+
+window.EV={
+trigger(){if(!run||paused)return false;if(EVT.mode&&EVT.mode!=='countdown')return false;return evFire();},
+challenge(){if(!run||paused)return false;if(EVT.mode&&EVT.mode!=='countdown')return false;return chStart();},
+cancel(){return evCancel('user');},
+shift(s){evShift(s);},
+snapshot(){
+const m=EVT.mode;
+let title='',desc='',sub='',cd=0;
+if(m==='countdown'){title='Upcoming event';cd=Math.max(0,Math.ceil(EVT.fireAt-elapsed()));}
+else if(m==='consequence'&&EVT.conseq){title=EVT.conseq.title;desc=EVT.conseq.desc;sub=EVT.item?EVT.item.title:'';}
+else if(m&&EVT.item){title=EVT.item.title;desc=EVT.item.desc;}
+return{mode:m||'',kind:EVT.kind||'',title,desc,sub,cd,wait:!!EVT.locked};
+}
+};
+
+/* ---------- Ruin sequence (temporary) ---------- */
+function doRuin(){
+if(!run||paused||ruinActive||EVT.locked||phase!=='play')return;
+ruinSnapshot={
+phase,
+queue:queue.map(s=>({...s})),
+cur:cur?{...cur}:null,
+curStart,curEnd,planEnd,extends_,forceOutcome,
+elapsedAt:elapsed()
+};
+ruinActive=true;
+forceOutcome='ruin';
+finale();
+evPub();
+}
+
+function restoreAfterRuin(){
+if(!ruinActive||!ruinSnapshot)return;
+const saved=ruinSnapshot;
+const shift=Math.max(0,elapsed()-saved.elapsedAt);
+phase=saved.phase;
+queue=saved.queue.map(s=>({...s}));
+cur=saved.cur?{...saved.cur}:null;
+curStart=saved.curStart+shift;
+curEnd=saved.curEnd+shift;
+planEnd=saved.planEnd+shift;
+extends_=saved.extends_;
+forceOutcome=saved.forceOutcome;
+ruinActive=false;
+ruinSnapshot=null;
+evShift(shift);
+if(cur){
+say(cur.t);
+if(!EVT.locked&&!paused)setBpm(cur.bpm||0);
+}
+updateNext();
+evPub();
+}
+
+function cancelRuin(){
+if(!ruinActive)return;
+restoreAfterRuin();
+}
+
+/* ---------- Session control ---------- */
 function begin(){
 ac=ac||new(window.AudioContext||window.webkitAudioContext)();
 ac.resume();
@@ -651,17 +965,22 @@ $('slower').classList.toggle('hide',!speedCtl);
 speedMult=1;
 run=true;
 paused=false;
+$('pause').textContent='Pause';
 t0=performance.now();
-pausedTotal=0;
+haltReasons.clear();haltAt=0;haltTotal=0;
 extends_=0;
 phase='play';
+forceOutcome=null;
+ruinActive=false;ruinSnapshot=null;
 planEnd=endPlan();
-scheduleRandomBreaks();
-randomBreakActive = false;
-$('randomBreakOverlay').style.display = 'none';
+
 queue=[];
 nextT=ac.currentTime+.1;
 beatN=0;
+
+evReset();
+if(evOn)EVT.schedule=evMakeSchedule();
+evRender();
 
 go({t:PICK(LINES.open),label:'Slow warm-up',bpm:50,dur:R(25,40)});
 
@@ -671,6 +990,7 @@ startMedia();
 clearInterval(tick);
 tick=setInterval(loop,250);
 if(!window._sch)window._sch=setInterval(sched,40);
+evPub();
 }
 
 $('start').onclick=()=>{
@@ -679,18 +999,8 @@ catch(err){alert('Could not start: '+err.message);}
 };
 
 function loop(){
-if(!run||paused)return;
+if(!run||paused||EVT.locked)return;
 const e=elapsed();
-  // Check whether the next random break is due.
-if (
-  randomBreaksEnabled &&
-  randomBreakIndex < randomBreakTimes.length &&
-  e >= randomBreakTimes[randomBreakIndex]
-) {
-  randomBreakIndex++;
-  triggerRandomBreak();
-  return;
-}
 const f=1-Math.exp(-3*Math.min(e,planEnd*1.3)/(minutes*60));
 $('heatf').style.width=Math.max(0,Math.min(97,f*98.5+Math.sin(e/9)*1.5))+'%';
 
@@ -699,6 +1009,9 @@ const k=e-curStart;
 if(cur.ramp)setBpm(cur.ramp[0]+(cur.ramp[1]-cur.ramp[0])*Math.min(1,k/cur.dur));
 else if(cur.wave)setBpm(Math.floor(k/cur.wave[2])%2?cur.wave[1]:cur.wave[0]);
 }
+
+evTick();
+if(EVT.locked)return;
 
 if(phase==='play'&&e>=planEnd){finale();return;}
 if(phase==='play'&&e>=curEnd){
@@ -718,13 +1031,13 @@ return;
 $('txt').textContent='Cum in '+Math.max(1,Math.ceil(rem));
 }
 if(e>=curEnd){
-  if(queue.length){
-    go(queue.shift());
-  }else if(ruinActive){
-    restoreAfterRuin();
-  }else{
-    finish();
-  }
+if(queue.length){
+go(queue.shift());
+}else if(ruinActive){
+restoreAfterRuin();
+}else{
+finish();
+}
 }
 }
 }
@@ -771,10 +1084,13 @@ run=false;
 clearInterval(mtimer);
 $('heatf').style.width='100%';
 $('next').textContent='';
+evReset();
+evRender();
+evPub();
 }
 
 $('edge').onclick=()=>{
-if(!run||paused||phase!=='play')return;
+if(!run||paused||EVT.locked||phase!=='play')return;
 if(cur&&cur.edgeWait)curEnd=elapsed();
 else{
 queue.unshift({t:"STOP. Hands off. Hold it right there.",label:'Short hold',bpm:0,dur:R(5,12)});
@@ -782,47 +1098,51 @@ curEnd=elapsed();
 }
 };
 
-$('pause').onclick=e=>{
-if(!run)return;
-paused=!paused;
-if(paused){
-pausedAt=performance.now();
-e.target.textContent='Resume';
+function setPaused(p){
+if(!run||p===paused)return;
+paused=p;
+if(p){
+haltClock('pause');
+$('pause').textContent='Resume';
 setBpm(0);
 if('speechSynthesis'in window)speechSynthesis.cancel();
+}else{
+releaseClock('pause');
+$('pause').textContent='Pause';
+setBpm(EVT.locked?0:(cur?cur.bpm||0:0));
 }
-else{
-pausedTotal+=performance.now()-pausedAt;
-e.target.textContent='Pause';
-setBpm(cur?cur.bpm||0:0);
+evRender();
+evPub();
 }
+
+$('pause').onclick=()=>setPaused(!paused);
+
+$('stop').onclick=()=>{
+run=false;
+paused=false;
+$('pause').textContent='Pause';
+clearInterval(tick);
+clearInterval(mtimer);
+haltReasons.clear();
+evReset();
+evRender();
+ruinActive=false;ruinSnapshot=null;
+setBpm(0);
+if('speechSynthesis'in window)speechSynthesis.cancel();
+$('run').style.display='none';
+$('setup').classList.remove('hide');
+$('stage').querySelectorAll('img,video').forEach(n=>n.remove());
+evPub();
 };
 
-$('stop').onclick = () => {
-  run = false;
-  clearInterval(tick);
-  clearInterval(mtimer);
-  setBpm(0);
-
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
-
-  $('run').style.display = 'none';
-  $('setup').classList.remove('hide');
-  $('stage').querySelectorAll('img,video').forEach(n => n.remove());
-
-  // Reset random breaks
-  randomBreakTimes = [];
-  randomBreakIndex = 0;
-  randomBreakActive = false;
-
-  clearTimeout(randomBreakTimeout);
-
-  $('randomBreakOverlay').style.display = 'none';
+$('fs').onclick=()=>{
+const d=document.documentElement;
+if(document.fullscreenElement){document.exitFullscreen();}
+else if(d.requestFullscreen){d.requestFullscreen().catch(()=>{});}
+else if(d.webkitRequestFullscreen){d.webkitRequestFullscreen();}
 };
-
-$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
-$('hidebtn').onclick=()=>$('panic').style.display='block';
-$('panic').onclick=()=>$('panic').style.display='none';
+$('hidebtn').onclick=()=>{$('panic').style.display='block';};
+$('panic').onclick=()=>{$('panic').style.display='none';};
 
 document.addEventListener('keydown',e=>{
 if(e.key==='Escape')$('panic').style.display='block';
@@ -853,10 +1173,15 @@ el.play().catch(()=>{});
 $('stage').insertBefore(el,$('empty'));
 }
 
-function startMedia(){
+function restartMediaTimer(){
 clearInterval(mtimer);
+mtimer=setInterval(()=>{if(!paused&&!EVT.locked&&run)showNext()},+$('shuf').value*1000);
+}
+
+function startMedia(){
+mi=-1;
 showNext();
-mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$('shuf').value*1000);
+restartMediaTimer();
 }
 </script>
 
@@ -864,13 +1189,12 @@ mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$('shuf').value*1000);
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
-
 <script>
 (() => {
 "use strict";
 
 const firebaseConfig = {
- apiKey: "AIzaSyCKWXWEfKQeljEW2m2cqulKLDz7J3zW-l8",
+  apiKey: "AIzaSyCKWXWEfKQeljEW2m2cqulKLDz7J3zW-l8",
   authDomain: "bestjoi.firebaseapp.com",
   databaseURL: "https://bestjoi-default-rtdb.firebaseio.com",
   projectId: "bestjoi",
@@ -880,19 +1204,11 @@ const firebaseConfig = {
 };
 
 const el = id => document.getElementById(id);
-const setText = (id, value) => {
-  el(id).textContent = value;
-};
-const setDisabled = (id, value) => {
-  el(id).disabled = value;
-};
-const show = (id, value) => {
-  el(id).classList.toggle("hide", !value);
-};
+const setText = (id, value) => { el(id).textContent = value; };
+const setDisabled = (id, value) => { el(id).disabled = value; };
+const show = (id, value) => { el(id).classList.toggle("hide", !value); };
 
 /* ---------- Firebase state ---------- */
-
-// These are global within this Firebase script.
 let auth = null;
 let db = null;
 let user = null;
@@ -911,31 +1227,17 @@ let ownerRequestHandler = null;
 let ownerCommandRef = null;
 let ownerCommandHandler = null;
 
-function statusOwner(message) {
-  setText("remoteOwnerStatus", message);
-}
-
-function statusJoin(message) {
-  setText("remoteJoinStatus", message);
-}
+function statusOwner(message) { setText("remoteOwnerStatus", message); }
+function statusJoin(message) { setText("remoteJoinStatus", message); }
 
 /* ---------- Authentication ---------- */
-
 async function remoteAuthSignIn() {
-  if (auth && db && user) {
-    return user;
-  }
-
-  if (authPromise) {
-    return authPromise;
-  }
+  if (auth && db && user) return user;
+  if (authPromise) return authPromise;
 
   authPromise = (async () => {
     try {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
 
       if (auth.currentUser) {
@@ -949,21 +1251,15 @@ async function remoteAuthSignIn() {
 
       statusOwner("Connected to Firebase. Create a code when ready.");
       statusJoin("Connected to Firebase. Enter the owner's code.");
-
       console.log("Firebase authentication successful:", user.uid);
-
       return user;
-
     } catch (error) {
       console.error("Firebase authentication failed:", error);
-
       user = null;
       db = null;
       authPromise = null;
-
       statusOwner("Firebase sign-in failed: " + error.message);
       statusJoin("Firebase sign-in failed: " + error.message);
-
       throw error;
     }
   })();
@@ -972,28 +1268,20 @@ async function remoteAuthSignIn() {
 }
 
 /* ---------- Helpers ---------- */
-
 function makeCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = new Uint8Array(8);
-
   crypto.getRandomValues(bytes);
-
-  return Array.from(
-    bytes,
-    b => alphabet[b % alphabet.length]
-  ).join("");
+  return Array.from(bytes, b => alphabet[b % alphabet.length]).join("");
 }
 
 function detachOwnerListeners() {
   if (ownerRequestRef && ownerRequestHandler) {
     ownerRequestRef.off("child_added", ownerRequestHandler);
   }
-
   if (ownerCommandRef && ownerCommandHandler) {
     ownerCommandRef.off("child_added", ownerCommandHandler);
   }
-
   ownerRequestRef = null;
   ownerRequestHandler = null;
   ownerCommandRef = null;
@@ -1004,18 +1292,21 @@ function detachControllerListener() {
   if (controllerSessionRef && controllerSessionHandler) {
     controllerSessionRef.off("value", controllerSessionHandler);
   }
-
   controllerSessionRef = null;
   controllerSessionHandler = null;
 }
 
 /* ---------- Owner: create session ---------- */
-
 async function createOwnerSession() {
   try {
     await remoteAuthSignIn();
 
     detachOwnerListeners();
+
+    // Close any earlier code so it cannot be reused.
+    if (ownerRef) {
+      ownerRef.update({ status: "ended", controllerUid: null, remoteAllowed: false }).catch(() => {});
+    }
 
     ownerCode = makeCode();
     ownerRef = db.ref("sessions/" + ownerCode);
@@ -1036,55 +1327,44 @@ async function createOwnerSession() {
     setDisabled("remoteReject", true);
 
     pendingUid = null;
-
     statusOwner("Code created. Waiting for a join request.");
 
     /* Listen for join requests. */
-
     ownerRequestRef = db.ref("joinRequests/" + ownerCode);
 
     ownerRequestHandler = snapshot => {
       const request = snapshot.val();
-
       if (!request || !request.uid) return;
-
       pendingUid = request.uid;
-
-      setText(
-        "remoteRequestStatus",
-        "A device is requesting access."
-      );
-
+      setText("remoteRequestStatus", "A device is requesting access.");
       setDisabled("remoteApprove", false);
       setDisabled("remoteReject", false);
     };
 
     ownerRequestRef.on("child_added", ownerRequestHandler);
 
-    /* Listen for controller commands. */
-
-    ownerCommandRef = db.ref(
-      "sessions/" + ownerCode + "/commands"
-    );
+    /* Listen for pause / resume / stop commands.
+       Every other command type is handled by the remote-features script. */
+    ownerCommandRef = db.ref("sessions/" + ownerCode + "/commands");
 
     ownerCommandHandler = async snapshot => {
       const command = snapshot.val();
-
       if (!command || !ownerRef) return;
-// Leave new remote commands for the new command listener.
-if (!["pause", "resume", "stop"].includes(command.type)) {
-  return;
-}
+
+      if (!["pause", "resume", "stop"].includes(command.type)) return;
+
       try {
         const currentSnap = await ownerRef.get();
         const current = currentSnap.val();
 
-        const fresh = command.createdAt &&
-          (Date.now() - command.createdAt < 30000);
+        const fresh = typeof command.createdAt === "number" &&
+          Math.abs(Date.now() - command.createdAt) < 30000;
 
         if (
           !current ||
           !current.remoteAllowed ||
+          current.status === "ended" ||
+          !current.controllerUid ||
           command.uid !== current.controllerUid ||
           !fresh
         ) {
@@ -1092,28 +1372,15 @@ if (!["pause", "resume", "stop"].includes(command.type)) {
           return;
         }
 
-        // Only pause, resume and stop are accepted.
-        if (command.type === "pause" && run && !paused) {
-          el("pause").click();
-        }
-
-        if (command.type === "resume" && run && paused) {
-          el("pause").click();
-        }
-
-        if (command.type === "stop" && run) {
-          el("stop").click();
-        }
+        if (command.type === "pause" && run && !paused) el("pause").click();
+        if (command.type === "resume" && run && paused) el("pause").click();
+        if (command.type === "stop" && run) el("stop").click();
 
         await snapshot.ref.remove();
 
         if (command.type === "stop") {
-          await ownerRef.update({
-            status: "ended",
-            controllerUid: null
-          });
+          await ownerRef.update({ status: "ended", controllerUid: null });
         }
-
       } catch (error) {
         statusOwner("Command error: " + error.message);
       }
@@ -1122,7 +1389,6 @@ if (!["pause", "resume", "stop"].includes(command.type)) {
     ownerCommandRef.on("child_added", ownerCommandHandler);
 
     console.log("Owner session created:", ownerCode);
-
   } catch (error) {
     console.error("CREATE SESSION ERROR:", error);
     statusOwner("Could not create code: " + error.message);
@@ -1130,10 +1396,8 @@ if (!["pause", "resume", "stop"].includes(command.type)) {
 }
 
 /* ---------- Owner: approve request ---------- */
-
 async function approveRequest() {
   if (!pendingUid || !ownerRef || !ownerCode) return;
-
   const approvedUid = pendingUid;
 
   try {
@@ -1143,18 +1407,13 @@ async function approveRequest() {
       remoteAllowed: true
     });
 
-    await db.ref(
-      "joinRequests/" + ownerCode + "/" + approvedUid
-    ).remove();
+    await db.ref("joinRequests/" + ownerCode + "/" + approvedUid).remove();
 
     pendingUid = null;
-
     setText("remoteRequestStatus", "Controller approved.");
     setDisabled("remoteApprove", true);
     setDisabled("remoteReject", true);
-
     statusOwner("Controller connected.");
-
   } catch (error) {
     console.error("APPROVAL ERROR:", error);
     statusOwner("Approval failed: " + error.message);
@@ -1162,62 +1421,44 @@ async function approveRequest() {
 }
 
 /* ---------- Owner: reject request ---------- */
-
 async function rejectRequest() {
   if (!pendingUid || !ownerCode) return;
-
   const rejectedUid = pendingUid;
 
   try {
-    await db.ref(
-      "joinRequests/" + ownerCode + "/" + rejectedUid
-    ).remove();
-
+    await db.ref("joinRequests/" + ownerCode + "/" + rejectedUid).remove();
     pendingUid = null;
-
     setText("remoteRequestStatus", "Request rejected.");
     setDisabled("remoteApprove", true);
     setDisabled("remoteReject", true);
-
     statusOwner("Request rejected.");
-
   } catch (error) {
     statusOwner("Could not reject request: " + error.message);
   }
 }
 
 /* ---------- Owner: disconnect controller ---------- */
-
 async function disconnectController() {
   if (!ownerRef) return;
 
   try {
-    await ownerRef.update({
-      controllerUid: null,
-      status: "waiting"
-    });
+    await ownerRef.update({ controllerUid: null, status: "waiting" });
 
     if (ownerCode) {
-      await db.ref(
-        "sessions/" + ownerCode + "/commands"
-      ).remove();
+      await db.ref("sessions/" + ownerCode + "/commands").remove();
     }
 
     pendingUid = null;
-
     setText("remoteRequestStatus", "No pending request.");
     setDisabled("remoteApprove", true);
     setDisabled("remoteReject", true);
-
     statusOwner("Controller disconnected. The code remains active.");
-
   } catch (error) {
     statusOwner("Disconnect failed: " + error.message);
   }
 }
 
 /* ---------- Controller: listen for approval ---------- */
-
 function listenForControllerApproval(code) {
   detachControllerListener();
 
@@ -1257,28 +1498,16 @@ function listenForControllerApproval(code) {
     show("remoteControllerPanel", false);
   };
 
-  controllerSessionRef.on(
-    "value",
-    controllerSessionHandler,
-    error => {
-      console.error("CONTROLLER LISTENER ERROR:", error);
-
-      statusJoin(
-        "Could not monitor session: " + error.message
-      );
-
-      show("remoteControllerPanel", false);
-    }
-  );
+  controllerSessionRef.on("value", controllerSessionHandler, error => {
+    console.error("CONTROLLER LISTENER ERROR:", error);
+    statusJoin("Could not monitor session: " + error.message);
+    show("remoteControllerPanel", false);
+  });
 }
 
 /* ---------- Controller: request to join ---------- */
-
 async function requestJoin() {
-  const code = el("remoteJoinCode")
-    .value
-    .trim()
-    .toUpperCase();
+  const code = el("remoteJoinCode").value.trim().toUpperCase();
 
   if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
     statusJoin("Enter a valid 8-character code.");
@@ -1289,32 +1518,14 @@ async function requestJoin() {
     await remoteAuthSignIn();
 
     const uid = user.uid;
+    const requestRef = db.ref("joinRequests/" + code + "/" + uid);
+    const sessionRef = db.ref("sessions/" + code);
 
-    const requestRef = db.ref(
-      "joinRequests/" + code + "/" + uid
-    );
-
-    const sessionRef = db.ref(
-      "sessions/" + code
-    );
-
-    /* STEP 1: Create the join request. */
-
-    await requestRef.set({
-      uid: uid,
-      createdAt: Date.now()
-    });
-
+    await requestRef.set({ uid: uid, createdAt: Date.now() });
     console.log("STEP 1 SUCCESS: Join request created.");
 
-    /* STEP 2: Check that the session exists. */
-
     const snapshot = await sessionRef.once("value");
-
-    console.log(
-      "STEP 2 SUCCESS: Session read.",
-      snapshot.val()
-    );
+    console.log("STEP 2 SUCCESS: Session read.", snapshot.val());
 
     if (!snapshot.exists()) {
       await requestRef.remove();
@@ -1328,23 +1539,15 @@ async function requestJoin() {
       throw new Error("Remote control is disabled for this session.");
     }
 
-    /* STEP 3: Wait for the owner to approve. */
-
     listenForControllerApproval(code);
-
     statusJoin("Request sent. Waiting for owner approval.");
-
   } catch (error) {
     console.error("REQUEST JOIN ERROR:", error);
-
-    statusJoin(
-      "Could not request access: " + error.message
-    );
+    statusJoin("Could not request access: " + error.message);
   }
 }
 
-/* ---------- Controller: send commands ---------- */
-
+/* ---------- Controller: send pause / resume / stop ---------- */
 async function sendCommand(type) {
   try {
     await remoteAuthSignIn();
@@ -1354,10 +1557,7 @@ async function sendCommand(type) {
       return;
     }
 
-    const snap = await db.ref(
-      "sessions/" + controllerCode
-    ).get();
-
+    const snap = await db.ref("sessions/" + controllerCode).get();
     const session = snap.val();
 
     if (
@@ -1372,66 +1572,29 @@ async function sendCommand(type) {
       return;
     }
 
-    await db.ref(
-      "sessions/" + controllerCode + "/commands"
-    ).push({
+    await db.ref("sessions/" + controllerCode + "/commands").push({
       type: type,
       uid: user.uid,
       createdAt: Date.now()
     });
 
     statusJoin("Sent: " + type + ".");
-
   } catch (error) {
     console.error("SEND COMMAND ERROR:", error);
-
-    statusJoin(
-      "Could not send command: " + error.message
-    );
+    statusJoin("Could not send command: " + error.message);
   }
 }
 
 /* ---------- Button listeners ---------- */
-
-el("remoteCreate").addEventListener(
-  "click",
-  createOwnerSession
-);
-
-el("remoteApprove").addEventListener(
-  "click",
-  approveRequest
-);
-
-el("remoteReject").addEventListener(
-  "click",
-  rejectRequest
-);
-
-el("remoteDisconnect").addEventListener(
-  "click",
-  disconnectController
-);
-
-el("remoteJoin").addEventListener(
-  "click",
-  requestJoin
-);
-
-el("remoteControllerPause").addEventListener(
-  "click",
-  () => sendCommand("pause")
-);
-
-el("remoteControllerResume").addEventListener(
-  "click",
-  () => sendCommand("resume")
-);
-
+el("remoteCreate").addEventListener("click", createOwnerSession);
+el("remoteApprove").addEventListener("click", approveRequest);
+el("remoteReject").addEventListener("click", rejectRequest);
+el("remoteDisconnect").addEventListener("click", disconnectController);
+el("remoteJoin").addEventListener("click", requestJoin);
+el("remoteControllerPause").addEventListener("click", () => sendCommand("pause"));
+el("remoteControllerResume").addEventListener("click", () => sendCommand("resume"));
 el("remoteControllerStop").addEventListener("click", () => {
-  if (confirm("Stop the session on the owner device?")) {
-    sendCommand("stop");
-  }
+  if (confirm("Stop the session on the owner device?")) sendCommand("stop");
 });
 
 /* ---------- Keep Firebase status synchronized ---------- */
@@ -1439,45 +1602,32 @@ el("remoteControllerStop").addEventListener("click", () => {
 // Owner ends session locally.
 el("stop").addEventListener("click", async () => {
   if (!ownerRef) return;
-
   try {
-    await ownerRef.update({
-      status: "ended",
-      controllerUid: null
-    });
+    await ownerRef.update({ status: "ended", controllerUid: null });
   } catch (error) {
-    statusOwner(
-      "Could not update session status: " + error.message
-    );
+    statusOwner("Could not update session status: " + error.message);
   }
 });
 
-// Owner pauses or resumes locally.
+// Owner pauses or resumes locally (or via a remote pause/resume).
 el("pause").addEventListener("click", async () => {
-  if (!ownerRef) return;
-
+  if (!ownerRef || !run) return;
   try {
+    const ctrl = (await ownerRef.child("controllerUid").get()).val();
     await ownerRef.update({
-      status: paused ? "paused" : "connected"
+      status: paused ? "paused" : (ctrl ? "connected" : "waiting")
     });
   } catch (error) {
-    statusOwner(
-      "Could not update pause status: " + error.message
-    );
+    statusOwner("Could not update pause status: " + error.message);
   }
 });
 
 /* ---------- Initial Firebase connection ---------- */
-
 remoteAuthSignIn().catch(error => {
-  console.error(
-    "Initial Firebase connection failed:",
-    error
-  );
+  console.error("Initial Firebase connection failed:", error);
 });
 
 /* ---------- Cleanup ---------- */
-
 window.addEventListener("beforeunload", () => {
   detachOwnerListeners();
   detachControllerListener();
@@ -1486,24 +1636,21 @@ window.addEventListener("beforeunload", () => {
 })();
 </script>
 
-<!-- ===== NEW: pictures, speed, ruin, countdown and live preview (WebRTC, Firebase signaling) ===== -->
+<!-- ===== Pictures, speed, ruin, countdown, events and live preview (WebRTC, Firebase signaling) ===== -->
 <script>
 (() => {
 "use strict";
 const $=id=>document.getElementById(id);
 const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
 const OK=new Set([
-  "mediaPrev",
-  "mediaNext",
-  "mediaSet",
-  "speedUp",
-  "speedDown",
-  "ruin",
-  "cancelRuin",
+  "mediaPrev","mediaNext","mediaSet",
+  "speedUp","speedDown",
+  "ruin","cancelRuin",
   "instruction",
-  "countdown",
-  "cancelCountdown"
+  "countdown","cancelCountdown",
+  "triggerEvent","triggerChallenge","cancelEvent"
 ]);
+const INSTR=["crawl","slow","mid","fast","vfast","fuck","ramp","wave","edge","handsoff","squeeze","balls","stomach"];
 let db=null,me=null;
 const ready=new Promise(res=>{
   const t=setInterval(()=>{
@@ -1520,12 +1667,13 @@ st.textContent=`.rc-prev{position:sticky;top:0;z-index:3;background:var(--panel)
 .rc-st{font:13px system-ui;color:var(--mute);text-align:center;margin-top:4px}
 .rc-t{width:56px;height:56px;padding:0;border-radius:8px;overflow:hidden;font-size:11px}
 .rc-t img{width:100%;height:100%;object-fit:cover;display:block}
+.rc-ev{font:14px system-ui;color:var(--ink);background:#1d1122;border:1px solid var(--warm);border-radius:10px;padding:10px 12px;margin-top:8px;white-space:pre-line}
 #rcd{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;font:600 28px system-ui;padding:6px 16px;border-radius:12px;z-index:3}`;
 document.head.appendChild(st);
 const fmt=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
 
 /* ================= OWNER ================= */
-let oCode=null,oSess=null,oCmd=null,oRec=null,oPc=null,oSid=null,oCtrl=null,oCanvas=null,oStream=null,oDraw=null,oRetry=null,oPub=null,oOffs=[],cdEnd=0,cdHide=0;
+let oCode=null,oSess=null,oSessH=null,oCmd=null,oRec=null,oPc=null,oSid=null,oCtrl=null,oCanvas=null,oStream=null,oDraw=null,oRetry=null,oPub=null,oOffs=[],cdEnd=0,cdHide=0;
 const rcd=document.createElement("div");rcd.id="rcd";rcd.className="hide";$("stage").appendChild(rcd);
 const badge=document.createElement("span");badge.className="sm hide";badge.style.cssText="color:var(--warm);font-size:13px";badge.textContent="● Live view on";
 $("bar").insertBefore(badge,$("bar").firstChild);
@@ -1540,11 +1688,15 @@ setInterval(()=>{
 
 function pubState(){
   if(!oCode||!oCtrl||!db)return;
+  const e=window.EV.snapshot();
   db.ref("live/"+oCode+"/state").set({
     up:Date.now(),speed:Math.round(speedMult*100),run:!!run,paused:!!paused,phase:String(phase),
-    label:String(($("bpm").textContent)||""),mi:mi,n:media.length,cd:Math.max(0,Math.ceil(cdLeft())),cdOn:!!cdEnd
+    label:String(($("bpm").textContent)||""),mi:mi,n:media.length,cd:Math.max(0,Math.ceil(cdLeft())),cdOn:!!cdEnd,
+    wait:!!e.wait,evMode:String(e.mode),evKind:String(e.kind),evTitle:String(e.title),evDesc:String(e.desc),evSub:String(e.sub),evCd:Number(e.cd)||0
   }).catch(()=>{});
 }
+window.RC_pub=pubState;
+
 async function pubMedia(){
   if(!oCode||!oCtrl||!db)return;
   const items=await Promise.all(media.slice(0,40).map(m=>new Promise(r=>{
@@ -1587,6 +1739,19 @@ function drawFrame(){
     x.fillStyle="#1d1122";x.fillRect(0,H-6,W,6);
     x.fillStyle="#ff3d81";x.fillRect(0,H-6,W*(parseFloat($("heatf").style.width)||0)/100,6);
     if($("beat").classList.contains("p")){x.beginPath();x.arc(W-20,20,8,0,7);x.fill();}
+    const ev=window.EV.snapshot();
+    if(ev.mode==="countdown"){
+      x.fillStyle="#ffb347";x.fillRect(W/2-90,60,180,30);
+      x.fillStyle="#190e1d";x.font="700 16px system-ui";x.fillText("Event in "+fmt(ev.cd),W/2,81);
+    }else if(ev.mode){
+      x.fillStyle="rgba(13,7,16,.92)";x.fillRect(0,0,W,H);
+      x.strokeStyle="#ff3d81";x.lineWidth=3;x.strokeRect(20,40,W-40,H-80);
+      x.fillStyle="#ffb347";x.font="700 13px system-ui";
+      x.fillText(ev.mode==="consequence"?"CONSEQUENCE":ev.kind==="challenge"?"OPTIONAL CHALLENGE":"RANDOM EVENT",W/2,80);
+      x.fillStyle="#f1e7ec";x.font="700 26px Georgia,serif";wrapText(x,ev.title,W/2,125,W-80,32);
+      x.font="18px Georgia,serif";wrapText(x,ev.desc,W/2,180,W-80,24);
+      x.fillStyle="#a995b0";x.font="14px system-ui";x.fillText("Waiting for confirmation on the owner device",W/2,H-60);
+    }
     if(paused){x.fillStyle="rgba(0,0,0,.5)";x.fillRect(0,0,W,H);x.fillStyle="#fff";x.font="32px system-ui";x.fillText("PAUSED",W/2,H/2);}
   }
   if(!rcd.classList.contains("hide")){
@@ -1596,7 +1761,7 @@ function drawFrame(){
 }
 
 function stopRtc(){
-  clearInterval(oDraw);oDraw=null;clearTimeout(oRetry);
+  clearInterval(oDraw);oDraw=null;clearTimeout(oRetry);oRetry=null;
   oOffs.forEach(o=>{try{o[0].off(o[1],o[2]);}catch(e){}});oOffs=[];
   if(oPc){try{oPc.close();}catch(e){}oPc=null;}
   if(oStream){oStream.getTracks().forEach(t=>t.stop());oStream=null;}
@@ -1614,10 +1779,11 @@ async function startRtc(){
   const pc=oPc=new RTCPeerConnection(ICE);
   oStream.getTracks().forEach(t=>pc.addTrack(t,oStream));
   const L=db.ref("live/"+code);
+  const pendingIce=[];
   pc.onicecandidate=e=>{if(e.candidate&&sid===oSid)L.child("ownerIce/"+sid).push(e.candidate.toJSON()).catch(()=>{});};
   pc.onconnectionstatechange=()=>{
     if(pc!==oPc)return;
-    if(pc.connectionState==="failed"||pc.connectionState==="disconnected"){
+    if(pc.connectionState==="failed"||pc.connectionState==="disconnected"||pc.connectionState==="closed"){
       clearTimeout(oRetry);
       oRetry=setTimeout(()=>{if(pc===oPc&&pc.connectionState!=="connected")startRtc();},4000);
     }
@@ -1628,11 +1794,19 @@ async function startRtc(){
     const ansRef=L.child("answer"),ansH=async s=>{
       const v=s.val();
       if(v&&v.sid===sid&&pc===oPc&&pc.signalingState==="have-local-offer"){
-        try{await pc.setRemoteDescription({type:"answer",sdp:v.sdp});}catch(e){}
+        try{
+          await pc.setRemoteDescription({type:"answer",sdp:v.sdp});
+          while(pendingIce.length){pc.addIceCandidate(pendingIce.shift()).catch(()=>{});}
+        }catch(e){}
       }
     };
     ansRef.on("value",ansH);oOffs.push([ansRef,"value",ansH]);
-    const iceRef=L.child("ctrlIce/"+sid),iceH=s=>{if(pc===oPc&&pc.remoteDescription){pc.addIceCandidate(s.val()).catch(()=>{});}};
+    const iceRef=L.child("ctrlIce/"+sid),iceH=s=>{
+      if(pc!==oPc)return;
+      const cand=s.val();if(!cand)return;
+      if(pc.remoteDescription)pc.addIceCandidate(cand).catch(()=>{});
+      else pendingIce.push(cand);
+    };
     iceRef.on("child_added",iceH);oOffs.push([iceRef,"child_added",iceH]);
     const offer=await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -1640,126 +1814,70 @@ async function startRtc(){
   }catch(e){console.error("RTC owner error:",e);}
 }
 
-function doRuin(){
-  if(!run || paused || ruinActive) return;
-
-  // Save the session exactly where it currently is.
-  ruinSnapshot = {
-    phase,
-    queue: queue.map(s => ({...s})),
-    cur: cur ? {...cur} : null,
-    curStart,
-    curEnd,
-    planEnd,
-    extends_,
-    forceOutcome,
-    elapsedAt: elapsed()
-  };
-
-  ruinActive = true;
-  forceOutcome = "ruin";
-
-  // Trigger the temporary ruin sequence.
-  finale();
-
-  pubState();
-}
-
-function restoreAfterRuin(){
-  if(!ruinActive || !ruinSnapshot) return;
-
-  const saved = ruinSnapshot;
-
-  // Account for the time spent in the temporary sequence.
-  const shift = Math.max(0, elapsed() - saved.elapsedAt);
-
-  phase = saved.phase;
-  queue = saved.queue.map(s => ({...s}));
-  cur = saved.cur ? {...saved.cur} : null;
-
-  curStart = saved.curStart + shift;
-  curEnd = saved.curEnd + shift;
-  planEnd = saved.planEnd + shift;
-
-  extends_ = saved.extends_;
-  forceOutcome = saved.forceOutcome;
-
-  ruinActive = false;
-  ruinSnapshot = null;
-
-  // Restore the interrupted instruction.
-  if(cur){
-    say(cur.t);
-    setBpm(cur.bpm || 0);
-  }
-
-  updateNext();
-  pubState();
-}
-
-function cancelRuin(){
-  if(!ruinActive) return;
-
-  restoreAfterRuin();
-}
 function applyCmd(c){
   if(!OK.has(c.type))return;
   const n=media.length;
   if(c.type==="mediaNext"||c.type==="mediaPrev"||c.type==="mediaSet"){
     if(!n)return;
     let i;
-    if(c.type==="mediaSet"){i=c.index;if(!(Number.isInteger(i)&&i>=0&&i<n))return;}
+    if(c.type==="mediaSet")i=c.index;
     else i=((mi<0?0:mi)+(c.type==="mediaNext"?1:-1)+n)%n;
     showNext(i);
-    if(run){clearInterval(mtimer);mtimer=setInterval(()=>{if(!paused&&run)showNext()},+$("shuf").value*1000);}
+    if(run)restartMediaTimer();
   }
   else if(c.type==="speedUp"){if(run)adj(.1);}
   else if(c.type==="speedDown"){if(run)adj(-.1);}
   else if(c.type==="ruin")doRuin();
-   else if(c.type==="cancelRuin"){
-  cancelRuin();
-}
-else if(c.type==="instruction"){
-  const allowed = [
-    "crawl","slow","mid","fast","vfast","fuck",
-    "ramp","wave","edge","handsoff","squeeze","balls","stomach"
-  ];
-
-  if(allowed.includes(c.instruction) && run && !paused && phase==="play"){
-    queue = block(c.instruction);
-    curEnd = elapsed();
-    updateNext();
+  else if(c.type==="cancelRuin")cancelRuin();
+  else if(c.type==="instruction"){
+    if(run&&!paused&&!EVT.locked&&!ruinActive&&phase==="play"){
+      queue=block(c.instruction);
+      curEnd=elapsed();
+      updateNext();
+    }
   }
-}
-  else if(c.type==="countdown"){
-    const m=c.minutes;
-    if(typeof m==="number"&&isFinite(m)&&m>=.1&&m<=180){cdEnd=Date.now()+m*60000;cdHide=0;}
-  }
+  else if(c.type==="countdown"){cdEnd=Date.now()+c.minutes*60000;cdHide=0;}
   else if(c.type==="cancelCountdown"){cdEnd=0;cdHide=0;rcd.classList.add("hide");}
+  else if(c.type==="triggerEvent"){window.EV.trigger();}
+  else if(c.type==="triggerChallenge"){window.EV.challenge();}
+  else if(c.type==="cancelEvent"){window.EV.cancel();}
+}
+function validCmd(c){
+  if(!c||typeof c.type!=="string"||!OK.has(c.type))return false;
+  if(typeof c.uid!=="string"||typeof c.createdAt!=="number")return false;
+  if(c.type==="mediaSet")return Number.isInteger(c.index)&&c.index>=0&&c.index<media.length;
+  if(c.type==="instruction")return INSTR.includes(c.instruction);
+  if(c.type==="countdown")return typeof c.minutes==="number"&&isFinite(c.minutes)&&c.minutes>=.1&&c.minutes<=180;
+  return true;
 }
 async function onCommand(snap){
   const c=snap.val();
   if(!c||!oSess)return;
-  // pause/resume/stop are handled by the original listener; only handle new types here
-  if(!OK.has(c.type))return;
+  // pause/resume/stop are handled by the original listener; only handle the other types here
+  if(!c.type||!OK.has(c.type))return;
   try{
     const cur0=(await oSess.get()).val();
-    const fresh=c.createdAt&&Math.abs(Date.now()-c.createdAt)<30000;
-    if(!cur0||!cur0.remoteAllowed||cur0.status==="ended"||!cur0.controllerUid||c.uid!==cur0.controllerUid||!fresh){snap.ref.remove().catch(()=>{});return;}
+    const fresh=typeof c.createdAt==="number"&&Math.abs(Date.now()-c.createdAt)<30000;
+    if(!cur0||!cur0.remoteAllowed||cur0.status==="ended"||!cur0.controllerUid||c.uid!==cur0.controllerUid||!fresh||!validCmd(c)){
+      snap.ref.remove().catch(()=>{});return;
+    }
     applyCmd(c);pubState();
     snap.ref.remove().catch(()=>{});
   }catch(e){console.error("Remote command error:",e);}
 }
 function stopOwner(){
-  stopRtc();clearInterval(oPub);
-  if(oSess){if(oCmd)oSess.child("commands").off("child_added",oCmd);}
+  stopRtc();clearInterval(oPub);oPub=null;
+  if(oSess){
+    if(oCmd)oSess.child("commands").off("child_added",oCmd);
+    if(oSessH)oSess.off("value",oSessH);
+  }
   if(oRec)oRec[0].off("value",oRec[1]);
-  oSess=oCmd=oRec=null;oCtrl=null;oCode=null;
+  oSess=oCmd=oSessH=oRec=null;oCtrl=null;oCode=null;
 }
 function startOwner(code){
   if(oCode===code)return;
   stopOwner();oCode=code;oSess=db.ref("sessions/"+code);
-  oSess.on("value",s=>{
+  oSessH=s=>{
     if(oCode!==code)return;
     const v=s.val(),c=(v&&v.controllerUid)||null;
     if(c!==oCtrl){
@@ -1768,7 +1886,8 @@ function startOwner(code){
       else{stopRtc();db.ref("live/"+code).remove().catch(()=>{});}
     }
     if(v&&v.status==="ended")stopRtc();
-  });
+  };
+  oSess.on("value",oSessH);
   oCmd=onCommand;oSess.child("commands").on("child_added",oCmd);
   const rr=db.ref("live/"+code+"/reconnect");let first=true;
   const rh=s=>{if(first){first=false;return;}if(s.val()&&oCtrl)startRtc();};
@@ -1792,6 +1911,17 @@ function buildUI(){
   <video id="rcVideo" autoplay playsinline muted></video>
   <div id="rcLive" class="rc-st">Preview: waiting for owner...</div>
 </div>
+
+<h2>Session status</h2>
+<div id="rcPhase" class="note"></div>
+
+<h2>Events and challenges</h2>
+<div class="row">
+  <button class="chip" id="rcEvNow">Trigger event now</button>
+  <button class="chip" id="rcChal">Trigger challenge</button>
+  <button class="ghost" id="rcEvCancel">Cancel event</button>
+</div>
+<div id="rcEvInfo" class="rc-ev">No event or challenge active.</div>
 
 <h2>Pictures</h2>
 <div class="row">
@@ -1832,7 +1962,6 @@ function buildUI(){
   </select>
   <button class="chip" id="rcSetInstruction">Set instruction</button>
 </div>
-<div id="rcPhase" class="note"></div>
 
 <h2>Countdown</h2>
 <div class="row">
@@ -1850,27 +1979,21 @@ function buildUI(){
   $("rcNext").onclick=()=>send("mediaNext");
   $("rcSlow").onclick=()=>send("speedDown");
   $("rcFast").onclick=()=>send("speedUp");
-$("rcRuin").onclick=()=>{
-  send("ruin");
-};
+  $("rcRuin").onclick=()=>send("ruin");
+  $("rcCancelRuin").onclick=()=>send("cancelRuin");
+  $("rcEvNow").onclick=()=>send("triggerEvent");
+  $("rcChal").onclick=()=>send("triggerChallenge");
+  $("rcEvCancel").onclick=()=>send("cancelEvent");
   $("rcCdGo").onclick=()=>{
     const m=parseFloat($("rcMin").value);
     if(!(m>=.1&&m<=180)){setLive("Countdown must be 0.1 to 180 minutes.");return;}
     send("countdown",{minutes:m});
   };
   $("rcCdStop").onclick=()=>send("cancelCountdown");
- $("rcCancelRuin").onclick=()=>{
-  send("cancelRuin");
-};
-
-$("rcSetInstruction").onclick=()=>{
-  send("instruction",{
-    instruction:$("rcInstruction").value
-  });
-};
+  $("rcSetInstruction").onclick=()=>send("instruction",{instruction:$("rcInstruction").value});
 }
 async function send(type,extra){
-  if(!cCode||!db)return;
+  if(!cCode||!db||!me)return;
   try{await db.ref("sessions/"+cCode+"/commands").push(Object.assign({type:type,uid:me.uid,createdAt:Date.now()},extra||{}));}
   catch(e){setLive("Could not send: "+e.message);}
 }
@@ -1882,6 +2005,10 @@ async function onOffer(s){
   const v=s.val();
   if(!v||v.sid===cSid||!cCode)return;
   cSid=v.sid;closeCPc();
+  cOffs=cOffs.filter(o=>{
+    if(o[3]==="ice"){try{o[0].off(o[1],o[2]);}catch(e){}return false;}
+    return true;
+  });
   const sid=v.sid,L=db.ref("live/"+cCode),pc=cPc=new RTCPeerConnection(ICE);
   pc.ontrack=e=>{const vid=$("rcVideo");vid.srcObject=e.streams[0];vid.play().catch(()=>{});};
   pc.onicecandidate=e=>{if(e.candidate)L.child("ctrlIce/"+sid).push(e.candidate.toJSON()).catch(()=>{});};
@@ -1893,7 +2020,7 @@ async function onOffer(s){
   try{
     await pc.setRemoteDescription({type:"offer",sdp:v.sdp});
     const iceRef=L.child("ownerIce/"+sid),iceH=x=>{if(pc===cPc)pc.addIceCandidate(x.val()).catch(()=>{});};
-    iceRef.on("child_added",iceH);cOffs.push([iceRef,"child_added",iceH]);
+    iceRef.on("child_added",iceH);cOffs.push([iceRef,"child_added",iceH,"ice"]);
     const ans=await pc.createAnswer();
     await pc.setLocalDescription(ans);
     await L.child("answer").set({sid:sid,type:"answer",sdp:ans.sdp});
@@ -1903,8 +2030,15 @@ function onState(s){
   const v=s.val();if(!v)return;
   cLast=Date.now();
   $("rcSpeed").textContent=v.speed+"%";
-  $("rcPhase").textContent=(v.run?(v.paused?"Paused":"Running"):"Session not started")+" · phase: "+v.phase+(v.label?" · "+v.label:"");
+  const sess=!v.run?"Session not started":v.paused?(v.wait?"Paused (waiting for confirmation)":"Paused"):v.wait?"Waiting for confirmation":"Running";
+  $("rcPhase").textContent=sess+" · phase: "+v.phase+(v.label?" · "+v.label:"");
   $("rcCdInfo").textContent=v.cdOn?"Countdown running on owner device: "+fmt(v.cd):"";
+  let ev="No event or challenge active.";
+  if(v.evMode==="countdown")ev="Random event starts in "+fmt(v.evCd)+".";
+  else if(v.evMode==="confirm")ev="EVENT: "+v.evTitle+"\n"+v.evDesc+"\nWaiting for the owner to confirm.";
+  else if(v.evMode==="consequence")ev="CONSEQUENCE (instead of "+v.evSub+"): "+v.evTitle+"\n"+v.evDesc+"\nWaiting for the owner to confirm.";
+  else if(v.evMode==="challenge")ev="CHALLENGE: "+v.evTitle+"\n"+v.evDesc+"\nWaiting for the owner to confirm.";
+  $("rcEvInfo").textContent=ev;
   document.querySelectorAll("#rcThumbs .rc-t").forEach((b,i)=>b.classList.toggle("on",i===v.mi));
 }
 function onMedia(s){
@@ -1955,7 +2089,7 @@ ready.then(()=>{
   };
   new MutationObserver(sync).observe(panel,{attributes:true,attributeFilter:["class"]});sync();
 });
-window.addEventListener("beforeunload",()=>{stopRtc();stopCtrl();});
+window.addEventListener("beforeunload",()=>{stopRtc();stopCtrl();stopOwner();});
 })();
 </script>
 
