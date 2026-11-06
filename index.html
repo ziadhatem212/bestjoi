@@ -32,6 +32,8 @@ select,input[type=file],input[type=text],input:not([type]){background:#1d1122;co
 #run{display:none;position:fixed;inset:0;background:var(--bg);z-index:5;flex-direction:column}
 #stage{flex:1;position:relative;background:#0d0710;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
 #stage img,#stage video{max-width:100%;max-height:100%;object-fit:contain}
+  #stage iframe{width:100%;height:100%;border:0;background:#000}
+#cap{pointer-events:none}
 #empty{color:var(--mute);font:14px system-ui;text-align:center;padding:20px}
 #cap{position:absolute;left:0;right:0;bottom:0;padding:26px 18px 16px;background:linear-gradient(transparent,rgba(13,7,16,.92) 60%);text-align:center}
 #txt{font-size:clamp(20px,4.6vw,32px);line-height:1.3;margin:0}
@@ -150,6 +152,13 @@ select,input[type=file],input[type=text],input:not([type]){background:#1d1122;co
 <section>
 <h2>Pictures and videos</h2>
 <div class="row">
+<label>Source</label>
+<button class="chip on" id="srcFiles">Pictures / files</button>
+<button class="chip" id="srcLink">Video link</button>
+</div>
+
+<div id="fileBox">
+<div class="row">
 <input type="file" id="files" accept="image/*,video/*" multiple>
 </div>
 <div class="row">
@@ -157,11 +166,21 @@ select,input[type=file],input[type=text],input:not([type]){background:#1d1122;co
 <input type="range" id="shuf" min="3" max="30" value="8">
 <span id="shufv" class="sm">8s</span>
 </div>
+<p class="note" id="count">No media yet. Files stay on your device.</p>
+</div>
+
+<div id="linkBox" class="hide">
+<div class="row">
+<input type="text" id="vlink" placeholder="Paste a video link (YouTube, Vimeo, .mp4, any site)" style="flex:1;min-width:200px">
+<button class="chip" id="vlinkGo">Use link</button>
+</div>
+<p class="note" id="linkStatus">No link set. The video plays instead of the pictures for the whole session.</p>
+</div>
+
 <div class="row">
 <label>Video sound</label>
 <button class="chip" id="vsound">Muted</button>
 </div>
-<p class="note" id="count">No media yet. Files stay on your device.</p>
 </section>
 
 <section id="remotePanel">
@@ -414,6 +433,81 @@ media.forEach(m=>{try{URL.revokeObjectURL(m.url);}catch(err){}});
 media=[...e.target.files].map(f=>({url:URL.createObjectURL(f),video:f.type.startsWith('video')}));
 $('count').textContent=media.length+' file(s) loaded. Files stay on your device.';
 };
+  /* ---------- Video link source ---------- */
+let srcMode='files',linkItem=null;
+const hasMedia=()=>srcMode==='link'?!!linkItem:media.length>0;
+
+function parseLink(raw){
+let u=raw.trim();
+if(!u)return null;
+if(!/^https?:\/\//i.test(u))u='https://'+u;
+try{new URL(u);}catch(e){return null;}
+let m;
+if((m=u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([\w-]{11})/)))
+  return{kind:'yt',id:m[1],url:u};
+if((m=u.match(/vimeo\.com\/(?:video\/)?(\d+)/)))
+  return{kind:'vimeo',id:m[1],url:u};
+if(/\.(mp4|webm|ogv|ogg|mov|m4v|m3u8)(\?|#|$)/i.test(u))
+  return{kind:'file',url:u};
+return{kind:'page',url:u};
+}
+
+function setSource(mode){
+srcMode=mode;
+$('srcFiles').classList.toggle('on',mode==='files');
+$('srcLink').classList.toggle('on',mode==='link');
+$('fileBox').classList.toggle('hide',mode!=='files');
+$('linkBox').classList.toggle('hide',mode!=='link');
+}
+$('srcFiles').onclick=()=>setSource('files');
+$('srcLink').onclick=()=>setSource('link');
+
+$('vlinkGo').onclick=()=>{
+const p=parseLink($('vlink').value);
+if(!p){$('linkStatus').textContent='That does not look like a valid link.';linkItem=null;return;}
+linkItem=p;
+$('linkStatus').textContent=({
+  yt:'YouTube video ready.',
+  vimeo:'Vimeo video ready.',
+  file:'Direct video file ready.',
+  page:'Page link ready. Some sites refuse to be shown inside other pages. If it stays blank, use a direct video file or a YouTube/Vimeo link.'
+})[p.kind];
+};
+
+function showLink(){
+$('stage').querySelectorAll('img,video,iframe').forEach(x=>x.remove());
+if(!linkItem)return;
+let el;
+if(linkItem.kind==='file'){
+  el=document.createElement('video');
+  el.src=linkItem.url;
+  el.muted=vMuted;el.autoplay=true;el.loop=true;el.playsInline=true;el.controls=true;
+  el.play().catch(()=>{});
+}else{
+  el=document.createElement('iframe');
+  let src=linkItem.url;
+  const mu=vMuted?1:0;
+  if(linkItem.kind==='yt')
+    src='https://www.youtube.com/embed/'+linkItem.id+'?autoplay=1&mute='+mu+'&loop=1&playlist='+linkItem.id+'&playsinline=1&enablejsapi=1';
+  else if(linkItem.kind==='vimeo')
+    src='https://player.vimeo.com/video/'+linkItem.id+'?autoplay=1&loop=1&muted='+mu;
+  el.src=src;
+  el.allow='autoplay; fullscreen; encrypted-media; picture-in-picture';
+  el.allowFullscreen=true;
+}
+$('stage').insertBefore(el,$('empty'));
+}
+
+// Pause/resume the video when the session is paused or an event locks it
+function syncPlayback(){
+const stop=paused||EVT.locked;
+const v=$('stage').querySelector('video');
+if(v){stop?v.pause():v.play().catch(()=>{});}
+const f=$('stage').querySelector('iframe');
+if(f&&linkItem&&linkItem.kind==='yt'&&f.contentWindow){
+  try{f.contentWindow.postMessage(JSON.stringify({event:'command',func:stop?'pauseVideo':'playVideo',args:''}),'*');}catch(e){}
+}
+}
 
 /* ---------- Metronome ---------- */
 let ac=null,bpm=0,baseBpm=0,speedMult=1,nextT=0,beatN=0,speedCtl=false,showNxt=true;
@@ -984,7 +1078,7 @@ evRender();
 
 go({t:PICK(LINES.open),label:'Slow warm-up',bpm:50,dur:R(25,40)});
 
-$('empty').style.display=media.length?'none':'block';
+$('empty').style.display=hasMedia()?'none':'block';
 startMedia();
 
 clearInterval(tick);
@@ -1131,7 +1225,7 @@ setBpm(0);
 if('speechSynthesis'in window)speechSynthesis.cancel();
 $('run').style.display='none';
 $('setup').classList.remove('hide');
-$('stage').querySelectorAll('img,video').forEach(n=>n.remove());
+$('stage').querySelectorAll('img,video,iframe').forEach(n=>n.remove());
 evPub();
 };
 
@@ -1150,6 +1244,7 @@ if(e.key==='Escape')$('panic').style.display='block';
 
 /* ---------- Media shuffle ---------- */
 function showNext(forced){
+if(srcMode==='link'){showLink();return;}
 if(!media.length)return;
 let n;
 if(Number.isInteger(forced)&&forced>=0&&forced<media.length)n=forced;
@@ -1157,7 +1252,7 @@ else do{n=RI(0,media.length-1)}while(media.length>1&&n===mi);
 mi=n;
 const m=media[n];
 
-$('stage').querySelectorAll('img,video').forEach(x=>x.remove());
+$('stage').querySelectorAll('img,video,iframe').forEach(x=>x.remove());
 
 const el=document.createElement(m.video?'video':'img');
 el.src=m.url;
@@ -1175,6 +1270,7 @@ $('stage').insertBefore(el,$('empty'));
 
 function restartMediaTimer(){
 clearInterval(mtimer);
+  if(srcMode==='link')return;
 mtimer=setInterval(()=>{if(!paused&&!EVT.locked&&run)showNext()},+$('shuf').value*1000);
 }
 
@@ -1818,7 +1914,7 @@ function applyCmd(c){
   if(!OK.has(c.type))return;
   const n=media.length;
   if(c.type==="mediaNext"||c.type==="mediaPrev"||c.type==="mediaSet"){
-    if(!n)return;
+if(!n||srcMode==="link")return;
     let i;
     if(c.type==="mediaSet")i=c.index;
     else i=((mi<0?0:mi)+(c.type==="mediaNext"?1:-1)+n)%n;
